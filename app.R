@@ -212,6 +212,7 @@ ui <- fluidPage(
         mainPanel(width = 8,
                   tabsetPanel(type = "tabs",
                               tabPanel("Basic Plot", plotOutput("casesPlotPNG", height = 750) %>% withSpinner()),
+                              tabPanel("Interactive Plot", girafeOutput("casesPlotSVG") %>% withSpinner()),
                               tabPanel("Map", girafeOutput("mapPlot") %>% withSpinner())
                   )
         )
@@ -468,70 +469,6 @@ server <- function(input, output, session) {
                 )
         }
         
-        # Build fit if requested
-        # if(as.logical(these.data$do.fit)) {
-        #     highlights.df <- local.df[local.df$county %in% highlights, ]
-        #     
-        #     fit.func <- function(tmp.s) {
-        #         if(min(tmp.s[[s]]) == 0) {
-        #             t.f.df <- tibble(x = tmp.s$date, y = tmp.s[[s]] + 1)
-        #             
-        #             t.f <- lm(log10(y) ~ x, data = t.f.df)
-        #             
-        #             t.p.df <- tibble(x = t.f.df$x, 
-        #                              new.y = 10^predict(t.f) - 1, 
-        #                              county = tmp.s$county, 
-        #                              d.t = rep(log10(2) / coef(t.f)[2], nrow(t.f.df)))
-        #         }
-        #         else {
-        #             t.f.df <- tibble(x = tmp.s$date, y = tmp.s[[s]])
-        #             t.f <- lm(log10(y) ~ x, data = t.f.df)
-        #             
-        #             t.p.df <- tibble(x = t.f.df$x, 
-        #                              new.y = 10^predict(t.f), 
-        #                              county = tmp.s$county, 
-        #                              d.t = rep(log10(2) / coef(t.f)[2], nrow(t.f.df)))
-        #         }
-        #     }
-        #     
-        #     build.ano <- function(t.p) {
-        #         tmp <- t.p %>% group_by(county, d.t) %>% summarise()
-        #         captions <- unlist(lapply(1:nrow(tmp), function(x) paste(as.character(tmp$county[x]),
-        #                                                                  as.character('doubling time:'), 
-        #                                                                  as.character(round(tmp$d.t[x], digits = 2)),
-        #                                                                  'days')))
-        #         return(captions)
-        #     }
-        #     
-        #     predicted.df <- tibble(x = numeric(), new.y = numeric(), county = character(), d.t = numeric())
-        #     lapply(highlights.df$county, function(x) predicted.df <<- rbind(predicted.df, 
-        #                                                                    fit.func(highlights.df[highlights.df$county == x, ])))
-        #     
-        #     dist <- log10(max(local.df[[s]])) - log10(0.93 * (max(local.df[[s]])))
-        #     
-        #     lseq <- unlist(lapply(1:length(unique(predicted.df$county)), 
-        #                           function(x) (log10(max(local.df[[s]])) - 
-        #                                            log10(max(local.df[[s]])) * x * dist)))
-        #     
-        #     lseq <- rescale(lseq, 
-        #                     to = c(ifelse(log10(min(local.df[[s]])) < 0, 0, log10(min(local.df[[s]]))), log10(max(local.df[[s]]))), 
-        #                     from = c(1, log10(max(local.df[[s]]))))
-        #     
-        #     p <- p + geom_line(data = predicted.df,
-        #                        aes(x = x, 
-        #                            y = new.y,
-        #                            color = county), 
-        #                        alpha = 0.8,
-        #                        size = line.size * 0.9) +
-        #         annotate('text', 
-        #                  x = min(predicted.df$x), 
-        #                  y = 10^(lseq + 2*dist),
-        #                  label = build.ano(predicted.df),
-        #                  vjust = 1,
-        #                  hjust = 0,
-        #                  size = 5)
-        # }
-        
         if(as.logical(these.data$exp)) {
             p <- p + geom_line(data = exp.df,
                                aes(x = onset_date,
@@ -603,6 +540,346 @@ server <- function(input, output, session) {
                                fill = county),
                            size = point.size,
                            alpha = 0.9)
+        }
+        
+        #if(as.logical(these.data$align))
+        #    p <- p + xlab(paste('Days since alignment number'))
+        
+        if(s == 'caseCount')
+            this.legend.title <- 'Daily number of COVID-19 cases'
+        if(s == 'hospitalizedCount')
+            this.legend.title <- 'Daily number of COVID-19 hospitalized'
+        if(s == 'deathCount')
+            this.legend.title <- 'Daily number of COVID-19 deaths'
+        if(s == 'aggregateCaseCount')
+            this.legend.title <- 'Total number of COVID-19 cases'
+        if(s == 'aggregateHospitalizedCount')
+            this.legend.title <- 'Total number of COVID-19 hospitalized'
+        if(s == 'aggregateDeathCount')
+            this.legend.title <- 'Total number of COVID-19 deaths'
+        
+        p <- p + ylab(this.legend.title)
+        
+        return(p)
+    }
+    
+    renderCasesSVG <- function(these.data, these.colors) {
+        
+        s <- these.data$series
+        
+        highlights <- these.data$highlights
+        
+        local.df <- ohio.df[ohio.df$county %in% these.data$counties, ]
+        
+        if(as.logical(these.data$align)) {
+            
+            start_dates <- local.df %>%
+                group_by(county) %>%
+                summarise(start_date = min(onset_date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE))
+            
+            if(nrow(start_dates) > 1)
+                local.df <- local.df[order(local.df$county), ][unlist(sapply(1:nrow(start_dates), function(x) local.df$onset_date[local.df$county == start_dates$county[x]] >= start_dates$start_date[x])), ]
+            
+            doubling.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
+            
+            if(length(highlights) > 0)
+                doubling.df <- local.df[local.df$county %in% highlights, ]
+            
+            if(nrow(start_dates) > 1)
+                minimums <- doubling.df[order(doubling.df$county), ][unlist(lapply(1:nrow(start_dates), function(x) doubling.df$onset_date[doubling.df$county == start_dates$county[x]] == start_dates$start_date[x])), ]
+            
+            if(as.logical(these.data$exp)) {
+                low <- min(minimums[[s]])
+                high <- max(minimums[[s]])
+                
+                if(low == 0)
+                    low <- 1
+                if(high == 0)
+                    high <- 1
+                
+                start <- 10^mean(c(log10(low), log10(high)))
+                
+                date_seq <- 0:(max(doubling.df$onset_date) - min(doubling.df$onset_date))
+                ys <- lapply(c(2, 3, 5, 7), function(x) doubling_time(start, x, date_seq))
+                
+                exp.df <- tibble(onset_date = rep(min(doubling.df$onset_date) + days(date_seq), 4),
+                                 y = unlist(ys),
+                                 ds = c(rep('2 days', length(date_seq)),
+                                        rep('3 days', length(date_seq)),
+                                        rep('5 days', length(date_seq)),
+                                        rep('7 days', length(date_seq))))
+                
+                exp.df$onset_date <- exp.df$onset_date - min(doubling.df$onset_date)
+            }
+            
+            local.df <- local.df %>% group_by(county) %>% mutate(onset_date = onset_date - min(onset_date))
+        }
+        
+        local.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
+        
+        local.colors <- unlist(these.colors[unique(local.df$county)])
+        if(length(local.colors) == 0)
+            local.colors <- colors[1]
+        
+        if(length(highlights) > 0) {
+            sapply(names(local.colors), function(x) if(!(x %in% highlights)) {local.colors[x] <<- '#DEDEDE'})
+        }
+        
+        p <- ggplot()
+        
+        # define base sizes
+        base.size <- 22
+        point.size <- 6.5
+        line.size <- 2.2
+        font.size <- 28
+        ano.size <- 8
+        
+        if(these.data$transformation != 'none')
+            p <- p + scale_y_continuous(trans = these.data$transformation)
+        
+        # if(as.logical(these.data$facet)) {
+        #     point.size <- rescale(length(unique(local.df$state)), 
+        #                           to = c(1.5, point.size), 
+        #                           from = c(length(unique(state.df$state)), 1))
+        #     line.size <- rescale(length(unique(local.df$state)), 
+        #                          to = c(1, line.size), 
+        #                          from = c(length(unique(state.df$state)), 1))
+        #     font.size.adjust <- rescale(length(unique(local.df$state)), 
+        #                                 to = c(10, font.size), 
+        #                                 from = c(length(unique(state.df$state)), 1))
+        #     
+        #     p <- p + facet_rep_wrap(~state, scales = "fixed", repeat.tick.labels = FALSE) +
+        #         theme_minimal_hgrid(font.size.adjust, rel_small = 1, color = 'white') +
+        #         theme(panel.background = element_rect(fill = 'grey95'),
+        #               axis.line.x = element_line(color = 'black'),
+        #               axis.ticks.x = element_line(color = "black"),
+        #               legend.position = "right",
+        #               legend.justification = "left",
+        #               legend.text = element_text(size = base.size),
+        #               legend.box.spacing = unit(0, "pt"),
+        #               legend.title = element_blank(),
+        #               panel.spacing.x = unit(0.75, "lines"),
+        #               axis.text.x = element_text(angle = 90, vjust = 0.5),
+        #               axis.title = element_text(size = font.size),
+        #               axis.title.x = element_text(margin = unit(c(3, 0, 0, 0), "mm")),
+        #               axis.title.y = element_text(margin = unit(c(0, 3, 0, 0), "mm"))
+        #         ) 
+        # }
+        
+        #if(!as.logical(these.data$facet)) {
+        p <- p + theme_minimal_hgrid(base.size, rel_small = 1) +
+            theme(legend.position = "bottom",
+                  legend.justification = "right",
+                  legend.text = element_text(size = base.size),
+                  legend.box.spacing = unit(0, "pt"),
+                  legend.title = element_blank(),
+                  axis.title = element_text(size = font.size),
+                  axis.title.x = element_text(margin = unit(c(3, 0, 0, 0), "mm")),
+                  axis.title.y = element_text(margin = unit(c(0, 3, 0, 0), "mm"))
+            ) 
+        #}
+        
+        plottable.df <- local.df[!(local.df$county %in% highlights), ]
+
+        if(s == 'caseCount')
+            tooltip.label <- 'Daily Cases:'
+        if(s == 'hospitalizedCount')
+            tooltip.label <- 'Daily Hospitalizations:'
+        if(s == 'deathCount')
+            tooltip.label <- 'Daily Deaths:'
+        if(s == 'aggregateCaseCount')
+            tooltip.label <- 'Total Cases:'
+        if(s == 'aggregateHospitalizedCount')
+            tooltip.label <- 'Total Hospitalizations:'
+        if(s == 'aggregateDeathCount')
+            tooltip.label <- 'Total Deaths:'
+        
+        tooltip.func <- function(dat) {
+            this.list <- unlist(lapply(1:nrow(dat), function(i) paste(dat$name[i], '\n', 
+                                                                      tooltip.label, as.character(dat[[s]][i]))))
+            return(this.list)
+        }
+        
+        if(length(these.data$sexes) == 1 & length(these.data$ages) == 1) {
+            p <- p +
+                geom_line(data = plottable.df,
+                          aes(x = onset_date, 
+                              y = .data[[s]], 
+                              color = county),
+                          size = line.size, 
+                          alpha = 0.3) + 
+                geom_point_interactive(data = plottable.df,
+                                       aes(x = onset_date, 
+                                           y = .data[[s]], 
+                                           color = county,
+                                           fill = county,
+                                           tooltip = tooltip.func(plottable.df),
+                                           data_id = county),
+                                       size = point.size, 
+                                       alpha = 0.6) + 
+                xlab('') +
+                scale_color_manual(
+                    name = NULL,
+                    values = local.colors
+                ) +
+                scale_fill_manual(
+                    name = NULL,
+                    values = local.colors
+                ) +
+                guides(
+                    color = guide_legend(
+                        nrow = ceiling(length(unique(local.df$county)) / 5),
+                        override.aes = list(
+                            linetype = c(rep(0, length(unique(local.df$county)))),
+                            shape = c(rep(21, length(unique(local.df$county))))
+                        )
+                    )
+                ) 
+        }
+        
+        if(length(these.data$sexes) > 1 & length(these.data$counties) == 1) {
+            tmp.col <- unlist(these.colors)
+            names(tmp.col) <- NULL
+            tmp.col <- sample(tmp.col, length(these.data$sexes))
+            
+            p <- p +
+                geom_line(data = plottable.df,
+                          aes(x = onset_date, 
+                              y = .data[[s]], 
+                              color = sex),
+                          size = line.size, 
+                          alpha = 0.3) + 
+                geom_point_interactive(data = plottable.df,
+                                       aes(x = onset_date, 
+                                           y = .data[[s]], 
+                                           color = sex,
+                                           fill = sex,
+                                           tooltip = tooltip.func(plottable.df),
+                                           data_id = sex),
+                                       size = point.size, 
+                                       alpha = 0.6) + 
+                xlab('') +
+                scale_fill_manual(name = NULL, values = tmp.col) +
+                scale_color_manual(name = NULL, values = tmp.col) +
+                guides(
+                    color = guide_legend(
+                        nrow = ceiling(length(unique(local.df$sex)) / 5),
+                        override.aes = list(
+                            linetype = c(rep(0, length(unique(local.df$sex)))),
+                            shape = c(rep(21, length(unique(local.df$sex))))
+                        )
+                    )
+                ) 
+        }
+        
+        if(length(these.data$ages) > 1 & length(these.data$counties) == 1) {
+            tmp.col <- unlist(these.colors)
+            names(tmp.col) <- NULL
+            tmp.col <- sample(tmp.col, length(these.data$ages))
+            
+            p <- p +
+                geom_line(data = plottable.df,
+                          aes(x = onset_date, 
+                              y = .data[[s]], 
+                              color = age_range),
+                          size = line.size, 
+                          alpha = 0.3) + 
+                geom_point_interactive(data = plottable.df,
+                                       aes(x = onset_date, 
+                                           y = .data[[s]], 
+                                           color = age_range,
+                                           fill = age_range,
+                                           tooltip = tooltip.func(plottable.df),
+                                           data_id = age_range),
+                                       size = point.size, 
+                                       alpha = 0.6) + 
+                xlab('') +
+                scale_fill_manual(name = NULL, values = tmp.col) +
+                scale_color_manual(name = NULL, values = tmp.col) +
+                guides(
+                    color = guide_legend(
+                        nrow = ceiling(length(unique(local.df$age_range)) / 5),
+                        override.aes = list(
+                            linetype = c(rep(0, length(unique(local.df$age_range)))),
+                            shape = c(rep(21, length(unique(local.df$age_range))))
+                        )
+                    )
+                )
+        }
+        
+        if(as.logical(these.data$exp)) {
+            p <- p + geom_line(data = exp.df,
+                               aes(x = onset_date,
+                                   y = y,
+                                   group = ds),
+                               color = 'gray50',
+                               alpha = 0.8,
+                               size = line.size * 0.9,
+                               linetype = "dashed") +
+                annotate("text",
+                         x = max(exp.df$onset_date) * 0.99,
+                         y = max(exp.df$y[exp.df$ds == '1 day']),
+                         label = "doubling every day",
+                         size = 6,
+                         hjust = 1,
+                         vjust = 0,
+                         color = 'gray50',
+                         alpha = 1) +
+                annotate("text",
+                         x = max(exp.df$onset_date),
+                         y = max(exp.df$y[exp.df$ds == '2 days']),
+                         label = "doubling every 2 days",
+                         size = 5.5,
+                         hjust = 1,
+                         vjust = -0.25,
+                         color = 'gray50',
+                         alpha = 1) +
+                annotate("text",
+                         x = max(exp.df$onset_date),
+                         y = max(exp.df$y[exp.df$ds == '3 days']),
+                         label = "doubling every 3 days",
+                         size = 5,
+                         hjust = 1,
+                         vjust = -0.25,
+                         color = 'gray50',
+                         alpha = 1) +
+                annotate("text",
+                         x = max(exp.df$onset_date),
+                         y = max(exp.df$y[exp.df$ds == '5 days']),
+                         label = "doubling every 5 days",
+                         size = 4.5,
+                         hjust = 1,
+                         vjust = -0.25,
+                         color = 'gray50',
+                         alpha = 1) +
+                annotate("text",
+                         x = max(exp.df$onset_date),
+                         y = max(exp.df$y[exp.df$ds == '7 days']),
+                         label = "doubling every 7 days",
+                         size = 4,
+                         hjust = 1,
+                         vjust = -0.25,
+                         color = 'gray50',
+                         alpha = 1)
+        }
+        
+        if(length(highlights) > 0) {
+            highlights.df <- local.df[local.df$county %in% highlights, ]
+            p <- p + geom_line(data = highlights.df,
+                               aes(x = onset_date,
+                                   y = .data[[s]],
+                                   color = county),
+                               size = line.size,
+                               alpha = 0.8) + 
+                geom_point_interactive(data = highlights.df,
+                                       aes(x = onset_date, 
+                                           y = .data[[s]], 
+                                           color = county,
+                                           fill = county,
+                                           tooltip = tooltip.func(highlights.df),
+                                           data_id = county),
+                                       size = point.size, 
+                                       alpha = 0.6)
         }
         
         #if(as.logical(these.data$align))
@@ -777,6 +1054,10 @@ server <- function(input, output, session) {
     observe({
         inputData()
         output$casesPlotPNG <- renderPlot(renderCasesPNG(input.settings, colors.list))
+        output$casesPlotSVG <- renderGirafe(girafe(ggobj = renderCasesSVG(input.settings, colors.list),
+                                                   width_svg = 20,
+                                                   height_svg = 20 * 5 / 7,
+                                                   options = list(opts_selection(type = "single", only_shiny = FALSE))))
         output$mapPlot <- renderGirafe(girafe(ggobj = renderMap(input.settings),
                                               width_svg = 10,
                                               height_svg = 10 * 5 / 7,
@@ -786,6 +1067,10 @@ server <- function(input, output, session) {
     observe({
         shuffleColors()
         output$casesPlotPNG <- renderPlot(renderCasesPNG(input.settings, colors.list))
+        output$casesPlotSVG <- renderGirafe(girafe(ggobj = renderCasesSVG(input.settings, colors.list),
+                                                   width_svg = 20,
+                                                   height_svg = 20 * 5 / 7,
+                                                   options = list(opts_selection(type = "single", only_shiny = FALSE))))
         output$mapPlot <- renderGirafe(girafe(ggobj = renderMap(input.settings),
                                               width_svg = 10,
                                               height_svg = 10 * 5 / 7,
