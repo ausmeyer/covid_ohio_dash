@@ -29,12 +29,25 @@ ohio.df <- read_csv('https://coronavirus.ohio.gov/static/COVIDSummaryData.csv')
 names(ohio.df) <- c('county', 'sex', 'age_range',
                     'onset_date', 'death_date', 
                     'caseCount', 'deathCount', 'hospitalizedCount')
+ohio.df$county <- factor(ohio.df$county)
+ohio.df$sex <- factor(ohio.df$sex)
+ohio.df$age_range <- factor(ohio.df$age_range)
 
 ohio.df <- ohio.df[!(ohio.df$county == 'Grand Total'), ]
 
 ohio.df$onset_date <- mdy(ohio.df$onset_date)
 
 aggregate.df <- ohio.df %>% 
+    group_by(onset_date, age_range, sex) %>% 
+    summarise(county = 'Total',  
+              death_date = 'NA',
+              caseCount = sum(caseCount), 
+              deathCount = sum(deathCount), 
+              hospitalizedCount = sum(hospitalizedCount))
+
+ohio.df <- bind_rows(ohio.df, aggregate.df)
+
+aggregate.df.1 <- ohio.df %>% 
     group_by(county, onset_date) %>% 
     summarise(sex = 'Total',
               age_range = 'Total', 
@@ -43,7 +56,7 @@ aggregate.df <- ohio.df %>%
               deathCount = sum(deathCount), 
               hospitalizedCount = sum(hospitalizedCount))
 
-aggregate.df.1 <- ohio.df %>% 
+aggregate.df.2 <- ohio.df %>% 
     group_by(county, onset_date, sex) %>% 
     summarise(age_range = 'Total', 
               death_date = 'NA', 
@@ -51,7 +64,7 @@ aggregate.df.1 <- ohio.df %>%
               deathCount = sum(deathCount), 
               hospitalizedCount = sum(hospitalizedCount))
 
-aggregate.df.2 <- ohio.df %>% 
+aggregate.df.3 <- ohio.df %>% 
     group_by(county, onset_date, age_range) %>% 
     summarise(sex = 'Total', 
               death_date = 'NA', 
@@ -59,7 +72,7 @@ aggregate.df.2 <- ohio.df %>%
               deathCount = sum(deathCount), 
               hospitalizedCount = sum(hospitalizedCount))
 
-ohio.df <- bind_rows(ohio.df, aggregate.df, aggregate.df.1, aggregate.df.2)
+ohio.df <- bind_rows(ohio.df, aggregate.df.1, aggregate.df.2, aggregate.df.3)
 
 ohio.df <- ohio.df %>% group_by(county, sex, age_range) %>% 
     mutate(data = onset_date, 
@@ -68,6 +81,9 @@ ohio.df <- ohio.df %>% group_by(county, sex, age_range) %>%
            aggregateHospitalizedCount = cumsum(hospitalizedCount))
 
 all.choices <- c(unique(ohio.df$county))
+all.choices <- all.choices[all.choices != 'Total']
+all.choices <- c('Total', all.choices)
+
 all.ages <- c('Total', '0-19', '20-29', '30-39', 
               '40-49', '50-59', '60-69', 
               '70-79', '80+', 'Unknown')
@@ -98,6 +114,7 @@ doubling_time <- function(N0, d0, ts) {
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
+    tags$head(includeHTML(("google-analytics.html"))),
     useShinyjs(),
     
     # Application title
@@ -114,7 +131,7 @@ ui <- fluidPage(
                                                 options = list(`actions-box` = TRUE),
                                                 multiple = TRUE,
                                                 choices = all.choices,
-                                                selected = all.choices
+                                                selected = all.choices[-1]
                                     )
                              ),
                              column(12,
@@ -180,6 +197,13 @@ ui <- fluidPage(
                                                  h4("Align on Number"), 
                                                  value = 0)
                              )
+                         ),
+                         fluidRow(
+                             align = 'center',
+                             column(12,
+                                    actionButton('shuffle_colors',
+                                                 'Shuffle Colors'),
+                             )
                          )
                      )
         ),
@@ -204,7 +228,9 @@ ui <- fluidPage(
         The Ages menu provides selection of particular ages ranges, but to avoid confusion can only be used if only one county is selected.
         The Sex menu provides selection of particular sexes, but to avoid confusion can only be used if only one county is selected.
         The Align option will align all of the Counties selected to the first day that had at least the 'Align on Number' number of the selected Data.
-        The Guide option will overlay place a doubling time guide; it can only be selected if y-axis is Log10 and the data is Aligned."
+        The Guide option will overlay place a doubling time guide; it can only be selected if y-axis is Log10 and the data is Aligned.
+        If 'Total' is picked for ages or sex, the map will only use Total. If any other combination of ages or sexes is picked, it will sum the categories.
+    "
     
     ,
     
@@ -241,7 +267,7 @@ server <- function(input, output, session) {
             if(nrow(start_dates) > 1)
                 local.df <- local.df[order(local.df$county), ][unlist(sapply(1:nrow(start_dates), function(x) local.df$onset_date[local.df$county == start_dates$county[x]] >= start_dates$start_date[x])), ]
             
-            doubling.df <- local.df <- local.df[local.df$sex == these.data$sexes & local.df$age_range == these.data$ages, ]
+            doubling.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
             
             if(length(highlights) > 0)
                 doubling.df <- local.df[local.df$county %in% highlights, ]
@@ -276,7 +302,7 @@ server <- function(input, output, session) {
             local.df <- local.df %>% group_by(county) %>% mutate(onset_date = onset_date - min(onset_date))
         }
         
-        local.df <- local.df[local.df$sex == these.data$sexes & local.df$age_range == these.data$ages, ]
+        local.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
         
         local.colors <- unlist(these.colors[unique(local.df$county)])
         if(length(local.colors) == 0)
@@ -377,6 +403,10 @@ server <- function(input, output, session) {
         }
         
         if(length(these.data$sexes) > 1 & length(these.data$counties) == 1) {
+            tmp.col <- unlist(these.colors)
+            names(tmp.col) <- NULL
+            tmp.col <- sample(tmp.col, length(these.data$sexes))
+            
             p <- p +
                 geom_line(data = plottable.df,
                           aes(x = onset_date, 
@@ -392,8 +422,8 @@ server <- function(input, output, session) {
                            size = point.size, 
                            alpha = 0.6) +
                 xlab('') +
-                scale_fill_viridis_d(name = NULL) +
-                scale_color_viridis_d(name = NULL) +
+                scale_fill_manual(name = NULL, values = tmp.col) +
+                scale_color_manual(name = NULL, values = tmp.col) +
                 guides(
                     color = guide_legend(
                         nrow = ceiling(length(unique(local.df$sex)) / 5),
@@ -406,6 +436,10 @@ server <- function(input, output, session) {
         }
         
         if(length(these.data$ages) > 1 & length(these.data$counties) == 1) {
+            tmp.col <- unlist(these.colors)
+            names(tmp.col) <- NULL
+            tmp.col <- sample(tmp.col, length(these.data$ages))
+
             p <- p +
                 geom_line(data = plottable.df,
                           aes(x = onset_date, 
@@ -421,8 +455,8 @@ server <- function(input, output, session) {
                            size = point.size, 
                            alpha = 0.6) +
                 xlab('') +
-                scale_fill_viridis_d(name = NULL) +
-                scale_color_viridis_d(name = NULL) +
+                scale_fill_manual(name = NULL, values = tmp.col) +
+                scale_color_manual(name = NULL, values = tmp.col) +
                 guides(
                     color = guide_legend(
                         nrow = ceiling(length(unique(local.df$age_range)) / 5),
@@ -604,7 +638,13 @@ server <- function(input, output, session) {
         if(s == 'deathCount' | s == 'aggregateDeathCount')
             s <- 'deathCount'
         
-        local.df <- ohio.df[ohio.df$sex == these.data$sexes & ohio.df$age_range == these.data$ages, ]
+        local.df <- ohio.df[ohio.df$sex %in% these.data$sexes & ohio.df$age_range %in% these.data$ages, ]
+        
+        if('Total' %in% these.data$ages)
+            local.df <- local.df[local.df$age_range == 'Total', ]
+        if('Total' %in% these.data$sexes)
+            local.df <- local.df[local.df$sex == 'Total', ]
+        
         ohio.summary.df <- local.df %>% 
             group_by(county) %>% 
             summarise(caseCount = sum(caseCount), deathCount = sum(deathCount), hospitalizedCount = sum(hospitalizedCount))
@@ -683,7 +723,12 @@ server <- function(input, output, session) {
         return(p)
     }
     
-    inputData <- reactive({
+    shuffleColors <- eventReactive(input$shuffle_colors, {
+        new.cols <<- iwanthue(length(unique(ohio.df$county)), random = T)
+        sapply(1:length(unique(ohio.df$county)), function(x) colors.list[unique(ohio.df$county)[x]] <<- new.cols[x])
+    })
+    
+    inputData <- isolate({reactive({
         input.settings <<- list(counties = input$countyChoice,
                                 highlights = input$highlightSet,
                                 series = input$seriesChoice,
@@ -693,7 +738,7 @@ server <- function(input, output, session) {
                                 align = input$align,
                                 num_align = input$num_align,
                                 exponentials = input$exponentials)
-    }) %>% debounce(1500)
+    }) %>% debounce(1500)})
     
     observe({
         inputData()
@@ -731,6 +776,15 @@ server <- function(input, output, session) {
     
     observe({
         inputData()
+        output$casesPlotPNG <- renderPlot(renderCasesPNG(input.settings, colors.list))
+        output$mapPlot <- renderGirafe(girafe(ggobj = renderMap(input.settings),
+                                              width_svg = 10,
+                                              height_svg = 10 * 5 / 7,
+                                              options = list(opts_selection(type = "single", only_shiny = FALSE))))
+    })
+    
+    observe({
+        shuffleColors()
         output$casesPlotPNG <- renderPlot(renderCasesPNG(input.settings, colors.list))
         output$mapPlot <- renderGirafe(girafe(ggobj = renderMap(input.settings),
                                               width_svg = 10,
