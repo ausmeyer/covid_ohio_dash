@@ -29,9 +29,6 @@ ohio.df <- read_csv('https://coronavirus.ohio.gov/static/COVIDSummaryData.csv')
 names(ohio.df) <- c('county', 'sex', 'age_range',
                     'onset_date', 'death_date', 
                     'caseCount', 'deathCount', 'hospitalizedCount')
-ohio.df$county <- factor(ohio.df$county)
-ohio.df$sex <- factor(ohio.df$sex)
-ohio.df$age_range <- factor(ohio.df$age_range)
 
 ohio.df <- ohio.df[!(ohio.df$county == 'Grand Total'), ]
 
@@ -542,8 +539,8 @@ server <- function(input, output, session) {
                            alpha = 0.9)
         }
         
-        #if(as.logical(these.data$align))
-        #    p <- p + xlab(paste('Days since alignment number'))
+        if(as.logical(these.data$align))
+            p <- p + xlab(paste('Days since alignment number'))
         
         if(s == 'caseCount')
             this.legend.title <- 'Daily number of COVID-19 cases'
@@ -694,13 +691,13 @@ server <- function(input, output, session) {
         if(s == 'aggregateDeathCount')
             tooltip.label <- 'Total Deaths:'
         
-        tooltip.func <- function(dat) {
-            this.list <- unlist(lapply(1:nrow(dat), function(i) paste(dat$name[i], '\n', 
-                                                                      tooltip.label, as.character(dat[[s]][i]))))
-            return(this.list)
-        }
-        
         if(length(these.data$sexes) == 1 & length(these.data$ages) == 1) {
+            tooltip.func <- function(dat) {
+                this.list <- unlist(lapply(1:nrow(dat), function(i) paste(dat$county[i], '\n', 
+                                                                          tooltip.label, as.character(dat[[s]][i]))))
+                return(this.list)
+            }
+            
             p <- p +
                 geom_line(data = plottable.df,
                           aes(x = onset_date, 
@@ -742,6 +739,13 @@ server <- function(input, output, session) {
             names(tmp.col) <- NULL
             tmp.col <- sample(tmp.col, length(these.data$sexes))
             
+            tooltip.func <- function(dat) {
+                this.list <- unlist(lapply(1:nrow(dat), function(i) paste('County: ', these.data$counties[1], '\n', 
+                                                                          'Sex:', as.character(dat[['sex']][i]), '\n',
+                                                                          tooltip.label, as.character(dat[[s]][i]))))
+                return(this.list)
+            }
+            
             p <- p +
                 geom_line(data = plottable.df,
                           aes(x = onset_date, 
@@ -776,6 +780,13 @@ server <- function(input, output, session) {
             tmp.col <- unlist(these.colors)
             names(tmp.col) <- NULL
             tmp.col <- sample(tmp.col, length(these.data$ages))
+            
+            tooltip.func <- function(dat) {
+                this.list <- unlist(lapply(1:nrow(dat), function(i) paste('County: ', these.data$counties[1], '\n', 
+                                                                          'Age Range:', as.character(dat[['age_range']][i]), '\n',
+                                                                          tooltip.label, as.character(dat[[s]][i]))))
+                return(this.list)
+            }
             
             p <- p +
                 geom_line(data = plottable.df,
@@ -882,8 +893,8 @@ server <- function(input, output, session) {
                                        alpha = 0.6)
         }
         
-        #if(as.logical(these.data$align))
-        #    p <- p + xlab(paste('Days since alignment number'))
+        if(as.logical(these.data$align))
+            p <- p + xlab(paste('Days since alignment number'))
         
         if(s == 'caseCount')
             this.legend.title <- 'Daily number of COVID-19 cases'
@@ -957,7 +968,7 @@ server <- function(input, output, session) {
                                     data_id = name,
                                     tooltip = tooltip.func(ohio_sf))
             ) +
-            theme_map(12) +
+            theme_map(24) +
             theme(
                 legend.title.align = 0.5,
                 legend.text.align = 0.5,
@@ -976,8 +987,8 @@ server <- function(input, output, session) {
                     direction = "horizontal",
                     label.position = "bottom",
                     title.position = "top",
-                    barwidth = grid::unit(2.0, "in"),
-                    barheight = grid::unit(0.2, "in")
+                    barwidth = grid::unit(5.0, "in"),
+                    barheight = grid::unit(0.5, "in")
                 )
             )
         
@@ -992,8 +1003,8 @@ server <- function(input, output, session) {
                     direction = "horizontal",
                     label.position = "bottom",
                     title.position = "top",
-                    barwidth = grid::unit(2.0, "in"),
-                    barheight = grid::unit(0.2, "in")
+                    barwidth = grid::unit(5.0, "in"),
+                    barheight = grid::unit(0.5, "in")
                 )
             )
         
@@ -1059,8 +1070,8 @@ server <- function(input, output, session) {
                                                    height_svg = 20 * 5 / 7,
                                                    options = list(opts_selection(type = "single", only_shiny = FALSE))))
         output$mapPlot <- renderGirafe(girafe(ggobj = renderMap(input.settings),
-                                              width_svg = 10,
-                                              height_svg = 10 * 5 / 7,
+                                              width_svg = 20,
+                                              height_svg = 20 * 5 / 7,
                                               options = list(opts_selection(type = "single", only_shiny = FALSE))))
     })
     
@@ -1072,8 +1083,8 @@ server <- function(input, output, session) {
                                                    height_svg = 20 * 5 / 7,
                                                    options = list(opts_selection(type = "single", only_shiny = FALSE))))
         output$mapPlot <- renderGirafe(girafe(ggobj = renderMap(input.settings),
-                                              width_svg = 10,
-                                              height_svg = 10 * 5 / 7,
+                                              width_svg = 20,
+                                              height_svg = 20 * 5 / 7,
                                               options = list(opts_selection(type = "single", only_shiny = FALSE))))
     })
 }
