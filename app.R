@@ -725,7 +725,7 @@ server <- function(input, output, session) {
                 ) +
                 guides(
                     color = guide_legend(
-                        nrow = ceiling(length(unique(local.df$county)) / 5),
+                        nrow = ceiling(length(unique(local.df$county)) / 8),
                         override.aes = list(
                             linetype = c(rep(0, length(unique(local.df$county)))),
                             shape = c(rep(21, length(unique(local.df$county))))
@@ -767,7 +767,7 @@ server <- function(input, output, session) {
                 scale_color_manual(name = NULL, values = tmp.col) +
                 guides(
                     color = guide_legend(
-                        nrow = ceiling(length(unique(local.df$sex)) / 5),
+                        nrow = ceiling(length(unique(local.df$sex)) / 8),
                         override.aes = list(
                             linetype = c(rep(0, length(unique(local.df$sex)))),
                             shape = c(rep(21, length(unique(local.df$sex))))
@@ -809,7 +809,7 @@ server <- function(input, output, session) {
                 scale_color_manual(name = NULL, values = tmp.col) +
                 guides(
                     color = guide_legend(
-                        nrow = ceiling(length(unique(local.df$age_range)) / 5),
+                        nrow = ceiling(length(unique(local.df$age_range)) / 8),
                         override.aes = list(
                             linetype = c(rep(0, length(unique(local.df$age_range)))),
                             shape = c(rep(21, length(unique(local.df$age_range))))
