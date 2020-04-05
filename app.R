@@ -23,59 +23,82 @@ library(albersusa)
 library(hues)
 library(digest)
 
+calc.totals <- function(this.df) {
+    aggregate.df <- this.df %>% 
+        group_by(onset_date, age_range, sex) %>% 
+        summarise(county = 'Total',  
+                  death_date = 'NA',
+                  caseCount = sum(caseCount), 
+                  deathCount = sum(deathCount), 
+                  hospitalizedCount = sum(hospitalizedCount))
+    
+    this.df <- bind_rows(this.df, aggregate.df)
+    
+    aggregate.df.1 <- this.df %>% 
+        group_by(county, onset_date) %>% 
+        summarise(sex = 'Total',
+                  age_range = 'Total', 
+                  death_date = 'NA', 
+                  caseCount = sum(caseCount), 
+                  deathCount = sum(deathCount), 
+                  hospitalizedCount = sum(hospitalizedCount))
+    
+    aggregate.df.2 <- this.df %>% 
+        group_by(county, onset_date, sex) %>% 
+        summarise(age_range = 'Total', 
+                  death_date = 'NA', 
+                  caseCount = sum(caseCount), 
+                  deathCount = sum(deathCount), 
+                  hospitalizedCount = sum(hospitalizedCount))
+    
+    aggregate.df.3 <- this.df %>% 
+        group_by(county, onset_date, age_range) %>% 
+        summarise(sex = 'Total', 
+                  death_date = 'NA', 
+                  caseCount = sum(caseCount), 
+                  deathCount = sum(deathCount), 
+                  hospitalizedCount = sum(hospitalizedCount))
+    
+    this.df <- bind_rows(this.df, aggregate.df.1, aggregate.df.2, aggregate.df.3)
+    
+    this.df <- this.df %>% group_by(county, sex, age_range) %>% 
+        mutate(data = onset_date, 
+               aggregateCaseCount = cumsum(caseCount), 
+               aggregateDeathCount = cumsum(deathCount), 
+               aggregateHospitalizedCount = cumsum(hospitalizedCount))
+    
+    return(this.df)
+}
+
 options(spinner.color="#3e5fff")
 
 ohio.df <- read_csv('https://coronavirus.ohio.gov/static/COVIDSummaryData.csv')
+load('population.Rda')
+
 names(ohio.df) <- c('county', 'sex', 'age_range',
                     'onset_date', 'death_date', 
                     'caseCount', 'deathCount', 'hospitalizedCount')
 
 ohio.df <- ohio.df[!(ohio.df$county == 'Grand Total'), ]
-
 ohio.df$onset_date <- mdy(ohio.df$onset_date)
 
-aggregate.df <- ohio.df %>% 
-    group_by(onset_date, age_range, sex) %>% 
-    summarise(county = 'Total',  
-              death_date = 'NA',
-              caseCount = sum(caseCount), 
-              deathCount = sum(deathCount), 
-              hospitalizedCount = sum(hospitalizedCount))
+ohio.df <- calc.totals(ohio.df)
 
-ohio.df <- bind_rows(ohio.df, aggregate.df)
+normalized.df <- ohio.df[ohio.df$sex %in% unique(population$sex) & 
+                          ohio.df$age_range %in% unique(population$age_range), ]
 
-aggregate.df.1 <- ohio.df %>% 
-    group_by(county, onset_date) %>% 
-    summarise(sex = 'Total',
-              age_range = 'Total', 
-              death_date = 'NA', 
-              caseCount = sum(caseCount), 
-              deathCount = sum(deathCount), 
-              hospitalizedCount = sum(hospitalizedCount))
-
-aggregate.df.2 <- ohio.df %>% 
-    group_by(county, onset_date, sex) %>% 
-    summarise(age_range = 'Total', 
-              death_date = 'NA', 
-              caseCount = sum(caseCount), 
-              deathCount = sum(deathCount), 
-              hospitalizedCount = sum(hospitalizedCount))
-
-aggregate.df.3 <- ohio.df %>% 
-    group_by(county, onset_date, age_range) %>% 
-    summarise(sex = 'Total', 
-              death_date = 'NA', 
-              caseCount = sum(caseCount), 
-              deathCount = sum(deathCount), 
-              hospitalizedCount = sum(hospitalizedCount))
-
-ohio.df <- bind_rows(ohio.df, aggregate.df.1, aggregate.df.2, aggregate.df.3)
-
-ohio.df <- ohio.df %>% group_by(county, sex, age_range) %>% 
-    mutate(data = onset_date, 
-           aggregateCaseCount = cumsum(caseCount), 
-           aggregateDeathCount = cumsum(deathCount), 
-           aggregateHospitalizedCount = cumsum(hospitalizedCount))
+normalized.df <- normalized.df %>% 
+    group_by(county, sex, age_range, onset_date) %>%
+    mutate(death_date = death_date, 
+           caseCount = round(caseCount * 1000000 / population$pop[population$sex == .data$sex & 
+                                                  population$age_range == .data$age_range & 
+                                                  population$county == .data$county]),
+           deathCount = round(deathCount * 1000000 / population$pop[population$sex == .data$sex & 
+                                                      population$age_range == .data$age_range & 
+                                                      population$county == .data$county]),
+           hospitalizedCount = round(hospitalizedCount * 1000000 / population$pop[population$sex == .data$sex & 
+                                                      population$age_range == .data$age_range & 
+                                                      population$county == .data$county]))
 
 all.choices <- c(unique(ohio.df$county))
 all.choices <- all.choices[all.choices != 'Total']
@@ -154,6 +177,15 @@ ui <- fluidPage(
                          ),
                          fluidRow(
                              column(12,
+                                    radioButtons("normalize", 
+                                                 h4("Normalize Data"), 
+                                                 choices = list('Yes' = T, 'No' = F),
+                                                 selected = list('No' = F)
+                                    )
+                             )
+                         ),
+                         fluidRow(
+                             column(12,
                                     pickerInput("ageRange", 
                                                 h4("Ages"), 
                                                 options = list(`actions-box` = TRUE),
@@ -227,7 +259,8 @@ ui <- fluidPage(
         The Sex menu provides selection of particular sexes, but to avoid confusion can only be used if only one county is selected.
         The Align option will align all of the Counties selected to the first day that had at least the 'Align on Number' number of the selected Data.
         The Guide option will overlay place a doubling time guide; it can only be selected if y-axis is Log10 and the data is Aligned.
-        If 'Total' is picked for ages or sex, the map will only use Total. If any other combination of ages or sexes is picked, it will sum the categories.
+        For the Map, if ages or sexes other than Total are needed, select only the 'Total' option from the counties menu and nothing else.
+        If 'Total' is included for ages or sex, the map will only use Total. If any other combination of ages or sexes is picked, it will sum the categories selected.
     "
     
     ,
@@ -254,7 +287,10 @@ server <- function(input, output, session) {
         
         highlights <- these.data$highlights
         
-        local.df <- ohio.df[ohio.df$county %in% these.data$counties, ]
+        if(as.logical(these.data$normalize))
+            local.df <- normalized.df[normalized.df$county %in% these.data$counties, ]
+        else
+            local.df <- ohio.df[ohio.df$county %in% these.data$counties, ]
         
         if(as.logical(these.data$align)) {
             
@@ -555,6 +591,19 @@ server <- function(input, output, session) {
         if(s == 'aggregateDeathCount')
             this.legend.title <- 'Total number of COVID-19 deaths'
         
+        if(s == 'caseCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'Daily COVID-19 cases per million'
+        if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'Daily COVID-19 hospitalizations per million'
+        if(s == 'deathCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'Daily COVID-19 deaths per million'
+        if(s == 'aggregateCaseCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'Total COVID-19 cases per million'
+        if(s == 'aggregateHospitalizedCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'Total COVID-19 hospitalizations per million'
+        if(s == 'aggregateDeathCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'Total COVID-19 deaths per million'
+        
         p <- p + ylab(this.legend.title)
         
         return(p)
@@ -566,7 +615,10 @@ server <- function(input, output, session) {
         
         highlights <- these.data$highlights
         
-        local.df <- ohio.df[ohio.df$county %in% these.data$counties, ]
+        if(as.logical(these.data$normalize))
+            local.df <- normalized.df[normalized.df$county %in% these.data$counties, ]
+        else
+            local.df <- ohio.df[ohio.df$county %in% these.data$counties, ]
         
         if(as.logical(these.data$align)) {
             
@@ -909,6 +961,19 @@ server <- function(input, output, session) {
         if(s == 'aggregateDeathCount')
             this.legend.title <- 'Total number of COVID-19 deaths'
         
+        if(s == 'caseCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'Daily COVID-19 cases per million'
+        if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'Daily COVID-19 hospitalizations per million'
+        if(s == 'deathCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'Daily COVID-19 deaths per million'
+        if(s == 'aggregateCaseCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'Total COVID-19 cases per million'
+        if(s == 'aggregateHospitalizedCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'Total COVID-19 hospitalizations per million'
+        if(s == 'aggregateDeathCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'Total COVID-19 deaths per million'
+        
         p <- p + ylab(this.legend.title)
         
         return(p)
@@ -926,7 +991,10 @@ server <- function(input, output, session) {
         if(s == 'deathCount' | s == 'aggregateDeathCount')
             s <- 'deathCount'
         
-        local.df <- ohio.df[ohio.df$sex %in% these.data$sexes & ohio.df$age_range %in% these.data$ages, ]
+        if(as.logical(these.data$normalize))
+            local.df <- normalized.df[normalized.df$sex %in% these.data$sexes & normalized.df$age_range %in% these.data$ages, ]
+        else
+            local.df <- ohio.df[ohio.df$sex %in% these.data$sexes & ohio.df$age_range %in% these.data$ages, ]
         
         if('Total' %in% these.data$ages)
             local.df <- local.df[local.df$age_range == 'Total', ]
@@ -948,12 +1016,26 @@ server <- function(input, output, session) {
         if(s == 'deathCount')
             this.legend.title <- 'Number of COVID-19 deaths'
         
+        if(s == 'aggregateCaseCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'COVID-19 cases per million'
+        if(s == 'aggregateHospitalizedCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'COVID-19 hospitalizations per million'
+        if(s == 'aggregateDeathCount' & as.logical(these.data$normalize))
+            this.legend.title <- 'COVID-19 deaths per million'
+        
         if(s == 'caseCount')
             tooltip.label <- 'Cases:'
         if(s == 'hospitalizedCount')
             tooltip.label <- 'Hospitalizations:'
         if(s == 'deathCount')
             tooltip.label <- 'Deaths:'
+        
+        if(s == 'caseCount' & as.logical(these.data$normalize))
+            tooltip.label <- 'Cases per Million:'
+        if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
+            tooltip.label <- 'Hospitalizations per Million:'
+        if(s == 'deathCount' & as.logical(these.data$normalize))
+            tooltip.label <- 'Deaths per Million:'
         
         tooltip.func <- function(dat) {
             this.list <- unlist(lapply(1:nrow(dat), function(i) paste(dat$name[i], '\n', 
@@ -1025,7 +1107,8 @@ server <- function(input, output, session) {
                                 sexes = input$sex,
                                 align = input$align,
                                 num_align = input$num_align,
-                                exponentials = input$exponentials)
+                                exponentials = input$exponentials,
+                                normalize = input$normalize)
     }) %>% debounce(1500)})
     
     observe({
