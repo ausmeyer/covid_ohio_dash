@@ -743,6 +743,19 @@ server <- function(input, output, session) {
         if(s == 'aggregateDeathCount')
             tooltip.label <- 'Total Deaths:'
         
+        if(s == 'caseCount' & as.logical(these.data$normalize))
+            tooltip.label <- 'Daily Cases per million:'
+        if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
+            tooltip.label <- 'Daily Hospitalizations per million:'
+        if(s == 'deathCount' & as.logical(these.data$normalize))
+            tooltip.label <- 'Daily Deaths per million:'
+        if(s == 'aggregateCaseCount' & as.logical(these.data$normalize))
+            tooltip.label <- 'Total Cases per million:'
+        if(s == 'aggregateHospitalizedCount' & as.logical(these.data$normalize))
+            tooltip.label <- 'Total Hospitalizations per million:'
+        if(s == 'aggregateDeathCount' & as.logical(these.data$normalize))
+            tooltip.label <- 'Total Deaths per million:'
+        
         if(length(these.data$sexes) == 1 & length(these.data$ages) == 1) {
             tooltip.func <- function(dat) {
                 this.list <- unlist(lapply(1:nrow(dat), function(i) paste(dat$county[i], '\n', 
@@ -1031,11 +1044,11 @@ server <- function(input, output, session) {
             tooltip.label <- 'Deaths:'
         
         if(s == 'caseCount' & as.logical(these.data$normalize))
-            tooltip.label <- 'Cases per Million:'
+            tooltip.label <- 'Cases per million:'
         if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
-            tooltip.label <- 'Hospitalizations per Million:'
+            tooltip.label <- 'Hospitalizations per million:'
         if(s == 'deathCount' & as.logical(these.data$normalize))
-            tooltip.label <- 'Deaths per Million:'
+            tooltip.label <- 'Deaths per million:'
         
         tooltip.func <- function(dat) {
             this.list <- unlist(lapply(1:nrow(dat), function(i) paste(dat$name[i], '\n', 
