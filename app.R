@@ -1038,11 +1038,11 @@ server <- function(input, output, session) {
         if(s == 'deathCount')
             this.legend.title <- 'Number of COVID-19 deaths'
         
-        if(s == 'aggregateCaseCount' & as.logical(these.data$normalize))
+        if(s == 'caseCount' & as.logical(these.data$normalize))
             this.legend.title <- 'COVID-19 cases per million'
-        if(s == 'aggregateHospitalizedCount' & as.logical(these.data$normalize))
+        if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
             this.legend.title <- 'COVID-19 hospitalizations per million'
-        if(s == 'aggregateDeathCount' & as.logical(these.data$normalize))
+        if(s == 'deathCount' & as.logical(these.data$normalize))
             this.legend.title <- 'COVID-19 deaths per million'
         
         if(s == 'caseCount')
