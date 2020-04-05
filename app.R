@@ -98,7 +98,16 @@ normalized.df <- normalized.df %>%
                                                       population$county == .data$county]),
            hospitalizedCount = round(hospitalizedCount * 1000000 / population$pop[population$sex == .data$sex & 
                                                       population$age_range == .data$age_range & 
-                                                      population$county == .data$county]))
+                                                      population$county == .data$county]),
+           aggregateCaseCount = round(aggregateCaseCount * 1000000 / population$pop[population$sex == .data$sex & 
+                                                                      population$age_range == .data$age_range & 
+                                                                      population$county == .data$county]),
+           aggregateDeathCount = round(aggregateDeathCount * 1000000 / population$pop[population$sex == .data$sex & 
+                                                                        population$age_range == .data$age_range & 
+                                                                        population$county == .data$county]),
+           aggregateHospitalizedCount = round(aggregateHospitalizedCount * 1000000 / population$pop[population$sex == .data$sex & 
+                                                                                      population$age_range == .data$age_range & 
+                                                                                      population$county == .data$county]))
 
 all.choices <- c(unique(ohio.df$county))
 all.choices <- all.choices[all.choices != 'Total']
