@@ -23,6 +23,8 @@ library(albersusa)
 library(hues)
 library(digest)
 
+set.seed(5)
+
 calc.totals <- function(this.df) {
     aggregate.df <- this.df %>% 
         group_by(onset_date, age_range, sex) %>% 
@@ -131,7 +133,7 @@ all.transformations <- list('Linear' = 'none',
 #    rowwise() %>% 
 #    do(data.frame(., hash = digest(.)))
 
-colors <- iwanthue(length(unique(ohio.df$county)))
+colors <- iwanthue(length(unique(ohio.df$county)), random = F)
 colors.list <- list()
 sapply(1:length(unique(ohio.df$county)), function(x) colors.list[unique(ohio.df$county)[x]] <<- colors[x])
 
@@ -1115,10 +1117,10 @@ server <- function(input, output, session) {
         return(p)
     }
     
-    shuffleColors <- eventReactive(input$shuffle_colors, {
+    shuffleColors <- isolate({eventReactive(input$shuffle_colors, {
         new.cols <<- iwanthue(length(unique(ohio.df$county)), random = T)
         sapply(1:length(unique(ohio.df$county)), function(x) colors.list[unique(ohio.df$county)[x]] <<- new.cols[x])
-    })
+    })})
     
     inputData <- isolate({reactive({
         input.settings <<- list(counties = input$countyChoice,
