@@ -977,13 +977,6 @@ server <- function(input, output, session) {
     }
     
     observe({
-        # invalidate 6 hrs later
-        invalidateLater(1000 * 60 * 60 * 4, session)
-
-        system(paste0('Rscript load_clean_data_ohio.R'), wait = FALSE)
-    })
-    
-    observe({
         invalidateLater(1000 * 60 * 30)
         
         suppressWarnings(load('data.rda'))
