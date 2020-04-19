@@ -569,7 +569,7 @@ server <- function(input, output, session) {
         p <- ggplot()
         
         # define base sizes
-        base.size <- 12
+        base.size <- 11
         point.size <- 3.5
         line.size <- 1.7
         font.size <- 18
