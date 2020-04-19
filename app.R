@@ -27,7 +27,7 @@ set.seed(5)
 
 options(spinner.color="#3e5fff")
 
-#suppressWarnings(source('load_clean_data_ohio.R'))
+suppressWarnings(source('load_clean_data_ohio.R'))
 
 all.choices <- c(unique(ohio.df$county))
 all.choices <- all.choices[all.choices != 'Total']
