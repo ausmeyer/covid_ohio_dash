@@ -25,91 +25,9 @@ library(digest)
 
 set.seed(5)
 
-calc.totals <- function(this.df) {
-    aggregate.df <- this.df %>% 
-        group_by(onset_date, age_range, sex) %>% 
-        summarise(county = 'Total',  
-                  death_date = 'NA',
-                  caseCount = sum(caseCount), 
-                  deathCount = sum(deathCount), 
-                  hospitalizedCount = sum(hospitalizedCount))
-    
-    this.df <- bind_rows(this.df, aggregate.df)
-    
-    aggregate.df.1 <- this.df %>% 
-        group_by(county, onset_date) %>% 
-        summarise(sex = 'Total',
-                  age_range = 'Total', 
-                  death_date = 'NA', 
-                  caseCount = sum(caseCount), 
-                  deathCount = sum(deathCount), 
-                  hospitalizedCount = sum(hospitalizedCount))
-    
-    aggregate.df.2 <- this.df %>% 
-        group_by(county, onset_date, sex) %>% 
-        summarise(age_range = 'Total', 
-                  death_date = 'NA', 
-                  caseCount = sum(caseCount), 
-                  deathCount = sum(deathCount), 
-                  hospitalizedCount = sum(hospitalizedCount))
-    
-    aggregate.df.3 <- this.df %>% 
-        group_by(county, onset_date, age_range) %>% 
-        summarise(sex = 'Total', 
-                  death_date = 'NA', 
-                  caseCount = sum(caseCount), 
-                  deathCount = sum(deathCount), 
-                  hospitalizedCount = sum(hospitalizedCount))
-    
-    this.df <- bind_rows(this.df, aggregate.df.1, aggregate.df.2, aggregate.df.3)
-    
-    this.df <- this.df %>% group_by(county, sex, age_range) %>% 
-        mutate(data = onset_date, 
-               aggregateCaseCount = cumsum(caseCount), 
-               aggregateDeathCount = cumsum(deathCount), 
-               aggregateHospitalizedCount = cumsum(hospitalizedCount))
-    
-    return(this.df)
-}
-
 options(spinner.color="#3e5fff")
 
-ohio.df <- read_csv('https://coronavirus.ohio.gov/static/COVIDSummaryData.csv')
-load('population.Rda')
-
-names(ohio.df) <- c('county', 'sex', 'age_range',
-                    'onset_date', 'death_date', 
-                    'caseCount', 'deathCount', 'hospitalizedCount')
-
-ohio.df <- ohio.df[!(ohio.df$county == 'Grand Total'), ]
-ohio.df$onset_date <- mdy(ohio.df$onset_date)
-
-ohio.df <- calc.totals(ohio.df)
-
-normalized.df <- ohio.df[ohio.df$sex %in% unique(population$sex) & 
-                          ohio.df$age_range %in% unique(population$age_range), ]
-
-normalized.df <- normalized.df %>% 
-    group_by(county, sex, age_range, onset_date) %>%
-    mutate(death_date = death_date, 
-           caseCount = round(caseCount * 1000000 / population$pop[population$sex == .data$sex & 
-                                                  population$age_range == .data$age_range & 
-                                                  population$county == .data$county]),
-           deathCount = round(deathCount * 1000000 / population$pop[population$sex == .data$sex & 
-                                                      population$age_range == .data$age_range & 
-                                                      population$county == .data$county]),
-           hospitalizedCount = round(hospitalizedCount * 1000000 / population$pop[population$sex == .data$sex & 
-                                                      population$age_range == .data$age_range & 
-                                                      population$county == .data$county]),
-           aggregateCaseCount = round(aggregateCaseCount * 1000000 / population$pop[population$sex == .data$sex & 
-                                                                      population$age_range == .data$age_range & 
-                                                                      population$county == .data$county]),
-           aggregateDeathCount = round(aggregateDeathCount * 1000000 / population$pop[population$sex == .data$sex & 
-                                                                        population$age_range == .data$age_range & 
-                                                                        population$county == .data$county]),
-           aggregateHospitalizedCount = round(aggregateHospitalizedCount * 1000000 / population$pop[population$sex == .data$sex & 
-                                                                                      population$age_range == .data$age_range & 
-                                                                                      population$county == .data$county]))
+suppressWarnings(source('load_clean_data_ohio.R'))
 
 all.choices <- c(unique(ohio.df$county))
 all.choices <- all.choices[all.choices != 'Total']
@@ -128,10 +46,6 @@ all.series <- list('Daily Cases' = 'caseCount',
 
 all.transformations <- list('Linear' = 'none', 
                             'Log10' = 'log10')
-
-#ohio.df <- ohio.df %>%
-#    rowwise() %>% 
-#    do(data.frame(., hash = digest(.)))
 
 colors <- iwanthue(length(unique(ohio.df$county)), random = F)
 colors.list <- list()
@@ -307,10 +221,10 @@ server <- function(input, output, session) {
             
             start_dates <- local.df %>%
                 group_by(county) %>%
-                summarise(start_date = min(onset_date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE))
+                summarise(start_date = min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE))
             
             if(nrow(start_dates) > 1)
-                local.df <- local.df[order(local.df$county), ][unlist(sapply(1:nrow(start_dates), function(x) local.df$onset_date[local.df$county == start_dates$county[x]] >= start_dates$start_date[x])), ]
+                local.df <- local.df[order(local.df$county), ][unlist(sapply(1:nrow(start_dates), function(x) local.df$date[local.df$county == start_dates$county[x]] >= start_dates$start_date[x])), ]
             
             doubling.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
             
@@ -318,7 +232,7 @@ server <- function(input, output, session) {
                 doubling.df <- local.df[local.df$county %in% highlights, ]
             
             if(nrow(start_dates) > 1)
-                minimums <- doubling.df[order(doubling.df$county), ][unlist(lapply(1:nrow(start_dates), function(x) doubling.df$onset_date[doubling.df$county == start_dates$county[x]] == start_dates$start_date[x])), ]
+                minimums <- doubling.df[order(doubling.df$county), ][unlist(lapply(1:nrow(start_dates), function(x) doubling.df$date[doubling.df$county == start_dates$county[x]] == start_dates$start_date[x])), ]
             
             if(as.logical(these.data$exp)) {
                 low <- min(minimums[[s]])
@@ -331,20 +245,20 @@ server <- function(input, output, session) {
                 
                 start <- 10^mean(c(log10(low), log10(high)))
                 
-                date_seq <- 0:(max(doubling.df$onset_date) - min(doubling.df$onset_date))
+                date_seq <- 0:(max(doubling.df$date) - min(doubling.df$date))
                 ys <- lapply(c(2, 3, 5, 7), function(x) doubling_time(start, x, date_seq))
                 
-                exp.df <- tibble(onset_date = rep(min(doubling.df$onset_date) + days(date_seq), 4),
+                exp.df <- tibble(date = rep(min(doubling.df$date) + days(date_seq), 4),
                                  y = unlist(ys),
                                  ds = c(rep('2 days', length(date_seq)),
                                         rep('3 days', length(date_seq)),
                                         rep('5 days', length(date_seq)),
                                         rep('7 days', length(date_seq))))
                 
-                exp.df$onset_date <- exp.df$onset_date - min(doubling.df$onset_date)
+                exp.df$date <- exp.df$date - min(doubling.df$date)
             }
             
-            local.df <- local.df %>% group_by(county) %>% mutate(onset_date = onset_date - min(onset_date))
+            local.df <- local.df %>% group_by(county) %>% mutate(date = date - min(date))
         }
         
         local.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
@@ -368,35 +282,6 @@ server <- function(input, output, session) {
         if(these.data$transformation != 'none')
             p <- p + scale_y_continuous(trans = these.data$transformation)
         
-        # if(as.logical(these.data$facet)) {
-        #     point.size <- rescale(length(unique(local.df$state)), 
-        #                           to = c(1.5, point.size), 
-        #                           from = c(length(unique(state.df$state)), 1))
-        #     line.size <- rescale(length(unique(local.df$state)), 
-        #                          to = c(1, line.size), 
-        #                          from = c(length(unique(state.df$state)), 1))
-        #     font.size.adjust <- rescale(length(unique(local.df$state)), 
-        #                                 to = c(10, font.size), 
-        #                                 from = c(length(unique(state.df$state)), 1))
-        #     
-        #     p <- p + facet_rep_wrap(~state, scales = "fixed", repeat.tick.labels = FALSE) +
-        #         theme_minimal_hgrid(font.size.adjust, rel_small = 1, color = 'white') +
-        #         theme(panel.background = element_rect(fill = 'grey95'),
-        #               axis.line.x = element_line(color = 'black'),
-        #               axis.ticks.x = element_line(color = "black"),
-        #               legend.position = "right",
-        #               legend.justification = "left",
-        #               legend.text = element_text(size = base.size),
-        #               legend.box.spacing = unit(0, "pt"),
-        #               legend.title = element_blank(),
-        #               panel.spacing.x = unit(0.75, "lines"),
-        #               axis.text.x = element_text(angle = 90, vjust = 0.5),
-        #               axis.title = element_text(size = font.size),
-        #               axis.title.x = element_text(margin = unit(c(3, 0, 0, 0), "mm")),
-        #               axis.title.y = element_text(margin = unit(c(0, 3, 0, 0), "mm"))
-        #         ) 
-        # }
-        
         #if(!as.logical(these.data$facet)) {
         p <- p + theme_minimal_hgrid(base.size, rel_small = 1) +
             theme(legend.position = "bottom",
@@ -415,13 +300,13 @@ server <- function(input, output, session) {
         if(length(these.data$sexes) == 1 & length(these.data$ages) == 1) {
             p <- p +
                 geom_line(data = plottable.df,
-                          aes(x = onset_date, 
+                          aes(x = date, 
                               y = .data[[s]], 
                               color = county),
                           size = line.size, 
                           alpha = 0.3) + 
                 geom_point(data = plottable.df,
-                           aes(x = onset_date, 
+                           aes(x = date, 
                                y = .data[[s]], 
                                color = county,
                                fill = county),
@@ -454,13 +339,13 @@ server <- function(input, output, session) {
             
             p <- p +
                 geom_line(data = plottable.df,
-                          aes(x = onset_date, 
+                          aes(x = date, 
                               y = .data[[s]], 
                               color = sex),
                           size = line.size, 
                           alpha = 0.3) + 
                 geom_point(data = plottable.df,
-                           aes(x = onset_date, 
+                           aes(x = date, 
                                y = .data[[s]], 
                                color = sex,
                                fill = sex),
@@ -484,16 +369,16 @@ server <- function(input, output, session) {
             tmp.col <- unlist(these.colors)
             names(tmp.col) <- NULL
             tmp.col <- sample(tmp.col, length(these.data$ages))
-
+            
             p <- p +
                 geom_line(data = plottable.df,
-                          aes(x = onset_date, 
+                          aes(x = date, 
                               y = .data[[s]], 
                               color = age_range),
                           size = line.size, 
                           alpha = 0.3) + 
                 geom_point(data = plottable.df,
-                           aes(x = onset_date, 
+                           aes(x = date, 
                                y = .data[[s]], 
                                color = age_range,
                                fill = age_range),
@@ -515,7 +400,7 @@ server <- function(input, output, session) {
         
         if(as.logical(these.data$exp)) {
             p <- p + geom_line(data = exp.df,
-                               aes(x = onset_date,
+                               aes(x = date,
                                    y = y,
                                    group = ds),
                                color = 'gray50',
@@ -523,7 +408,7 @@ server <- function(input, output, session) {
                                size = line.size * 0.9,
                                linetype = "dashed") +
                 annotate("text",
-                         x = max(exp.df$onset_date) * 0.99,
+                         x = max(exp.df$date) * 0.99,
                          y = max(exp.df$y[exp.df$ds == '1 day']),
                          label = "doubling every day",
                          size = 6,
@@ -532,7 +417,7 @@ server <- function(input, output, session) {
                          color = 'gray50',
                          alpha = 1) +
                 annotate("text",
-                         x = max(exp.df$onset_date),
+                         x = max(exp.df$date),
                          y = max(exp.df$y[exp.df$ds == '2 days']),
                          label = "doubling every 2 days",
                          size = 5.5,
@@ -541,7 +426,7 @@ server <- function(input, output, session) {
                          color = 'gray50',
                          alpha = 1) +
                 annotate("text",
-                         x = max(exp.df$onset_date),
+                         x = max(exp.df$date),
                          y = max(exp.df$y[exp.df$ds == '3 days']),
                          label = "doubling every 3 days",
                          size = 5,
@@ -550,7 +435,7 @@ server <- function(input, output, session) {
                          color = 'gray50',
                          alpha = 1) +
                 annotate("text",
-                         x = max(exp.df$onset_date),
+                         x = max(exp.df$date),
                          y = max(exp.df$y[exp.df$ds == '5 days']),
                          label = "doubling every 5 days",
                          size = 4.5,
@@ -559,7 +444,7 @@ server <- function(input, output, session) {
                          color = 'gray50',
                          alpha = 1) +
                 annotate("text",
-                         x = max(exp.df$onset_date),
+                         x = max(exp.df$date),
                          y = max(exp.df$y[exp.df$ds == '7 days']),
                          label = "doubling every 7 days",
                          size = 4,
@@ -572,13 +457,13 @@ server <- function(input, output, session) {
         if(length(highlights) > 0) {
             highlights.df <- local.df[local.df$county %in% highlights, ]
             p <- p + geom_line(data = highlights.df,
-                               aes(x = onset_date,
+                               aes(x = date,
                                    y = .data[[s]],
                                    color = county),
                                size = line.size,
                                alpha = 0.8) + 
                 geom_point(data = highlights.df,
-                           aes(x = onset_date, 
+                           aes(x = date, 
                                y = .data[[s]], 
                                color = county,
                                fill = county),
@@ -635,10 +520,10 @@ server <- function(input, output, session) {
             
             start_dates <- local.df %>%
                 group_by(county) %>%
-                summarise(start_date = min(onset_date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE))
+                summarise(start_date = min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE))
             
             if(nrow(start_dates) > 1)
-                local.df <- local.df[order(local.df$county), ][unlist(sapply(1:nrow(start_dates), function(x) local.df$onset_date[local.df$county == start_dates$county[x]] >= start_dates$start_date[x])), ]
+                local.df <- local.df[order(local.df$county), ][unlist(sapply(1:nrow(start_dates), function(x) local.df$date[local.df$county == start_dates$county[x]] >= start_dates$start_date[x])), ]
             
             doubling.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
             
@@ -646,7 +531,7 @@ server <- function(input, output, session) {
                 doubling.df <- local.df[local.df$county %in% highlights, ]
             
             if(nrow(start_dates) > 1)
-                minimums <- doubling.df[order(doubling.df$county), ][unlist(lapply(1:nrow(start_dates), function(x) doubling.df$onset_date[doubling.df$county == start_dates$county[x]] == start_dates$start_date[x])), ]
+                minimums <- doubling.df[order(doubling.df$county), ][unlist(lapply(1:nrow(start_dates), function(x) doubling.df$date[doubling.df$county == start_dates$county[x]] == start_dates$start_date[x])), ]
             
             if(as.logical(these.data$exp)) {
                 low <- min(minimums[[s]])
@@ -659,20 +544,20 @@ server <- function(input, output, session) {
                 
                 start <- 10^mean(c(log10(low), log10(high)))
                 
-                date_seq <- 0:(max(doubling.df$onset_date) - min(doubling.df$onset_date))
+                date_seq <- 0:(max(doubling.df$date) - min(doubling.df$date))
                 ys <- lapply(c(2, 3, 5, 7), function(x) doubling_time(start, x, date_seq))
                 
-                exp.df <- tibble(onset_date = rep(min(doubling.df$onset_date) + days(date_seq), 4),
+                exp.df <- tibble(date = rep(min(doubling.df$date) + days(date_seq), 4),
                                  y = unlist(ys),
                                  ds = c(rep('2 days', length(date_seq)),
                                         rep('3 days', length(date_seq)),
                                         rep('5 days', length(date_seq)),
                                         rep('7 days', length(date_seq))))
                 
-                exp.df$onset_date <- exp.df$onset_date - min(doubling.df$onset_date)
+                exp.df$date <- exp.df$date - min(doubling.df$date)
             }
             
-            local.df <- local.df %>% group_by(county) %>% mutate(onset_date = onset_date - min(onset_date))
+            local.df <- local.df %>% group_by(county) %>% mutate(date = date - min(date))
         }
         
         local.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
@@ -697,36 +582,6 @@ server <- function(input, output, session) {
         if(these.data$transformation != 'none')
             p <- p + scale_y_continuous(trans = these.data$transformation)
         
-        # if(as.logical(these.data$facet)) {
-        #     point.size <- rescale(length(unique(local.df$state)), 
-        #                           to = c(1.5, point.size), 
-        #                           from = c(length(unique(state.df$state)), 1))
-        #     line.size <- rescale(length(unique(local.df$state)), 
-        #                          to = c(1, line.size), 
-        #                          from = c(length(unique(state.df$state)), 1))
-        #     font.size.adjust <- rescale(length(unique(local.df$state)), 
-        #                                 to = c(10, font.size), 
-        #                                 from = c(length(unique(state.df$state)), 1))
-        #     
-        #     p <- p + facet_rep_wrap(~state, scales = "fixed", repeat.tick.labels = FALSE) +
-        #         theme_minimal_hgrid(font.size.adjust, rel_small = 1, color = 'white') +
-        #         theme(panel.background = element_rect(fill = 'grey95'),
-        #               axis.line.x = element_line(color = 'black'),
-        #               axis.ticks.x = element_line(color = "black"),
-        #               legend.position = "right",
-        #               legend.justification = "left",
-        #               legend.text = element_text(size = base.size),
-        #               legend.box.spacing = unit(0, "pt"),
-        #               legend.title = element_blank(),
-        #               panel.spacing.x = unit(0.75, "lines"),
-        #               axis.text.x = element_text(angle = 90, vjust = 0.5),
-        #               axis.title = element_text(size = font.size),
-        #               axis.title.x = element_text(margin = unit(c(3, 0, 0, 0), "mm")),
-        #               axis.title.y = element_text(margin = unit(c(0, 3, 0, 0), "mm"))
-        #         ) 
-        # }
-        
-        #if(!as.logical(these.data$facet)) {
         p <- p + theme_minimal_hgrid(base.size, rel_small = 1) +
             theme(legend.position = "bottom",
                   legend.justification = "right",
@@ -740,7 +595,7 @@ server <- function(input, output, session) {
         #}
         
         plottable.df <- local.df[!(local.df$county %in% highlights), ]
-
+        
         if(s == 'caseCount')
             tooltip.label <- 'Daily Cases:'
         if(s == 'hospitalizedCount')
@@ -776,13 +631,13 @@ server <- function(input, output, session) {
             
             p <- p +
                 geom_line(data = plottable.df,
-                          aes(x = onset_date, 
+                          aes(x = date, 
                               y = .data[[s]], 
                               color = county),
                           size = line.size, 
                           alpha = 0.3) + 
                 geom_point_interactive(data = plottable.df,
-                                       aes(x = onset_date, 
+                                       aes(x = date, 
                                            y = .data[[s]], 
                                            color = county,
                                            fill = county,
@@ -824,13 +679,13 @@ server <- function(input, output, session) {
             
             p <- p +
                 geom_line(data = plottable.df,
-                          aes(x = onset_date, 
+                          aes(x = date, 
                               y = .data[[s]], 
                               color = sex),
                           size = line.size, 
                           alpha = 0.3) + 
                 geom_point_interactive(data = plottable.df,
-                                       aes(x = onset_date, 
+                                       aes(x = date, 
                                            y = .data[[s]], 
                                            color = sex,
                                            fill = sex,
@@ -866,13 +721,13 @@ server <- function(input, output, session) {
             
             p <- p +
                 geom_line(data = plottable.df,
-                          aes(x = onset_date, 
+                          aes(x = date, 
                               y = .data[[s]], 
                               color = age_range),
                           size = line.size, 
                           alpha = 0.3) + 
                 geom_point_interactive(data = plottable.df,
-                                       aes(x = onset_date, 
+                                       aes(x = date, 
                                            y = .data[[s]], 
                                            color = age_range,
                                            fill = age_range,
@@ -896,7 +751,7 @@ server <- function(input, output, session) {
         
         if(as.logical(these.data$exp)) {
             p <- p + geom_line(data = exp.df,
-                               aes(x = onset_date,
+                               aes(x = date,
                                    y = y,
                                    group = ds),
                                color = 'gray50',
@@ -904,7 +759,7 @@ server <- function(input, output, session) {
                                size = line.size * 0.9,
                                linetype = "dashed") +
                 annotate("text",
-                         x = max(exp.df$onset_date) * 0.99,
+                         x = max(exp.df$date) * 0.99,
                          y = max(exp.df$y[exp.df$ds == '1 day']),
                          label = "doubling every day",
                          size = 6,
@@ -913,7 +768,7 @@ server <- function(input, output, session) {
                          color = 'gray50',
                          alpha = 1) +
                 annotate("text",
-                         x = max(exp.df$onset_date),
+                         x = max(exp.df$date),
                          y = max(exp.df$y[exp.df$ds == '2 days']),
                          label = "doubling every 2 days",
                          size = 5.5,
@@ -922,7 +777,7 @@ server <- function(input, output, session) {
                          color = 'gray50',
                          alpha = 1) +
                 annotate("text",
-                         x = max(exp.df$onset_date),
+                         x = max(exp.df$date),
                          y = max(exp.df$y[exp.df$ds == '3 days']),
                          label = "doubling every 3 days",
                          size = 5,
@@ -931,7 +786,7 @@ server <- function(input, output, session) {
                          color = 'gray50',
                          alpha = 1) +
                 annotate("text",
-                         x = max(exp.df$onset_date),
+                         x = max(exp.df$date),
                          y = max(exp.df$y[exp.df$ds == '5 days']),
                          label = "doubling every 5 days",
                          size = 4.5,
@@ -940,7 +795,7 @@ server <- function(input, output, session) {
                          color = 'gray50',
                          alpha = 1) +
                 annotate("text",
-                         x = max(exp.df$onset_date),
+                         x = max(exp.df$date),
                          y = max(exp.df$y[exp.df$ds == '7 days']),
                          label = "doubling every 7 days",
                          size = 4,
@@ -953,13 +808,13 @@ server <- function(input, output, session) {
         if(length(highlights) > 0) {
             highlights.df <- local.df[local.df$county %in% highlights, ]
             p <- p + geom_line(data = highlights.df,
-                               aes(x = onset_date,
+                               aes(x = date,
                                    y = .data[[s]],
                                    color = county),
                                size = line.size,
                                alpha = 0.8) + 
                 geom_point_interactive(data = highlights.df,
-                                       aes(x = onset_date, 
+                                       aes(x = date, 
                                            y = .data[[s]], 
                                            color = county,
                                            fill = county,
@@ -1116,6 +971,16 @@ server <- function(input, output, session) {
         
         return(p)
     }
+    
+    observe({
+        # invalidate 6 hrs later
+        invalidateLater(1000 * 60 * 60 * 6, session)
+        
+        suppressWarnings(source('load_clean_data_ohio.R'))
+        
+        ohio.df <<- ohio.df
+        normalized.df <<- normalized.df
+    })
     
     shuffleColors <- isolate({eventReactive(input$shuffle_colors, {
         new.cols <<- iwanthue(length(unique(ohio.df$county)), random = T)
