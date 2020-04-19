@@ -27,7 +27,7 @@ set.seed(5)
 
 options(spinner.color="#3e5fff")
 
-suppressWarnings(source('load_clean_data_ohio.R'))
+#suppressWarnings(source('load_clean_data_ohio.R'))
 
 all.choices <- c(unique(ohio.df$county))
 all.choices <- all.choices[all.choices != 'Total']
@@ -191,6 +191,11 @@ ui <- fluidPage(
     ,
     
     br(),br(),
+    
+    'Complaints/Suggestions Department: ',
+    a('@austingmeyer', href='https://twitter.com/austingmeyer'),
+    
+    br(),
     
     "Data from: ",
     a("https://coronavirus.ohio.gov/wps/portal/gov/covid-19/home/dashboard", href="https://coronavirus.ohio.gov/wps/portal/gov/covid-19/home/dashboard"),
