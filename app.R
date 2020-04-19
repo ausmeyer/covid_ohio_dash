@@ -21,11 +21,10 @@ library(shinycssloaders)
 library(sf)
 library(albersusa)
 library(hues)
+library(digest)
 
 set.seed(5)
-
 options(spinner.color="#3e5fff")
-
 suppressWarnings(load('data.rda'))
 
 all.choices <- c(unique(ohio.df$county))
@@ -191,11 +190,6 @@ ui <- fluidPage(
     
     br(),br(),
     
-    'Complaints/Suggestions Department: ',
-    a('@austingmeyer', href='https://twitter.com/austingmeyer'),
-    
-    br(),
-    
     "Data from: ",
     a("https://coronavirus.ohio.gov/wps/portal/gov/covid-19/home/dashboard", href="https://coronavirus.ohio.gov/wps/portal/gov/covid-19/home/dashboard"),
     
@@ -286,7 +280,6 @@ server <- function(input, output, session) {
         if(these.data$transformation != 'none')
             p <- p + scale_y_continuous(trans = these.data$transformation)
         
-        #if(!as.logical(these.data$facet)) {
         p <- p + theme_minimal_hgrid(base.size, rel_small = 1) +
             theme(legend.position = "bottom",
                   legend.justification = "right",
@@ -297,7 +290,6 @@ server <- function(input, output, session) {
                   axis.title.x = element_text(margin = unit(c(3, 0, 0, 0), "mm")),
                   axis.title.y = element_text(margin = unit(c(0, 3, 0, 0), "mm"))
             ) 
-        #}
         
         plottable.df <- local.df[!(local.df$county %in% highlights), ]
         
@@ -577,11 +569,11 @@ server <- function(input, output, session) {
         p <- ggplot()
         
         # define base sizes
-        base.size <- 22
-        point.size <- 6.5
-        line.size <- 2.2
-        font.size <- 28
-        ano.size <- 8
+        base.size <- 12
+        point.size <- 3.5
+        line.size <- 1.7
+        font.size <- 18
+        ano.size <- 6
         
         if(these.data$transformation != 'none')
             p <- p + scale_y_continuous(trans = these.data$transformation)
@@ -976,14 +968,6 @@ server <- function(input, output, session) {
         return(p)
     }
     
-    observe({
-        invalidateLater(1000 * 60 * 30)
-        
-        suppressWarnings(load('data.rda'))
-        ohio.df <<- ohio.df
-        normalized.df <<- normalized.df
-    })
-    
     shuffleColors <- isolate({eventReactive(input$shuffle_colors, {
         new.cols <<- iwanthue(length(unique(ohio.df$county)), random = T)
         sapply(1:length(unique(ohio.df$county)), function(x) colors.list[unique(ohio.df$county)[x]] <<- new.cols[x])
@@ -1038,14 +1022,15 @@ server <- function(input, output, session) {
     
     observe({
         inputData()
+        
         output$casesPlotPNG <- renderPlot(renderCasesPNG(input.settings, colors.list))
         output$casesPlotSVG <- renderGirafe(girafe(ggobj = renderCasesSVG(input.settings, colors.list),
-                                                   width_svg = 20,
-                                                   height_svg = 20 * 5 / 7,
+                                                   width_svg = 10,
+                                                   height_svg = 10 * 5 / 7,
                                                    options = list(opts_selection(type = "single", only_shiny = FALSE))))
         output$mapPlot <- renderGirafe(girafe(ggobj = renderMap(input.settings),
-                                              width_svg = 20,
-                                              height_svg = 20 * 5 / 7,
+                                              width_svg = 10,
+                                              height_svg = 10 * 5 / 7,
                                               options = list(opts_selection(type = "single", only_shiny = FALSE))))
     })
     
@@ -1053,12 +1038,12 @@ server <- function(input, output, session) {
         shuffleColors()
         output$casesPlotPNG <- renderPlot(renderCasesPNG(input.settings, colors.list))
         output$casesPlotSVG <- renderGirafe(girafe(ggobj = renderCasesSVG(input.settings, colors.list),
-                                                   width_svg = 20,
-                                                   height_svg = 20 * 5 / 7,
+                                                   width_svg = 10,
+                                                   height_svg = 10 * 5 / 7,
                                                    options = list(opts_selection(type = "single", only_shiny = FALSE))))
         output$mapPlot <- renderGirafe(girafe(ggobj = renderMap(input.settings),
-                                              width_svg = 20,
-                                              height_svg = 20 * 5 / 7,
+                                              width_svg = 10,
+                                              height_svg = 10 * 5 / 7,
                                               options = list(opts_selection(type = "single", only_shiny = FALSE))))
     })
 }
