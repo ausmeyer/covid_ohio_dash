@@ -972,15 +972,15 @@ server <- function(input, output, session) {
         return(p)
     }
     
-    # observe({
-    #     # invalidate 6 hrs later
-    #     invalidateLater(1000 * 60 * 60 * 6, session)
-    #     
-    #     suppressWarnings(source('load_clean_data_ohio.R'))
-    #     
-    #     ohio.df <<- ohio.df
-    #     normalized.df <<- normalized.df
-    # })
+    observe({
+        # invalidate 6 hrs later
+        invalidateLater(1000 * 60 * 60 * 6, session)
+
+        suppressWarnings(source('load_clean_data_ohio.R'))
+
+        ohio.df <<- ohio.df
+        normalized.df <<- normalized.df
+    })
     
     shuffleColors <- isolate({eventReactive(input$shuffle_colors, {
         new.cols <<- iwanthue(length(unique(ohio.df$county)), random = T)
