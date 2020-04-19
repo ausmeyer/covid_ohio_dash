@@ -1027,12 +1027,12 @@ server <- function(input, output, session) {
         
         output$casesPlotPNG <- renderPlot(renderCasesPNG(input.settings, colors.list))
         output$casesPlotSVG <- renderGirafe(girafe(ggobj = renderCasesSVG(input.settings, colors.list),
-                                                   width_svg = 10,
-                                                   height_svg = 10 * 5 / 7,
+                                                   width_svg = 20,
+                                                   height_svg = 20 * 5 / 7,
                                                    options = list(opts_selection(type = "single", only_shiny = FALSE))))
         output$mapPlot <- renderGirafe(girafe(ggobj = renderMap(input.settings),
-                                              width_svg = 10,
-                                              height_svg = 10 * 5 / 7,
+                                              width_svg = 20,
+                                              height_svg = 20 * 5 / 7,
                                               options = list(opts_selection(type = "single", only_shiny = FALSE))))
     })
     
