@@ -59,11 +59,11 @@ ohio.df <- ohio.df[!(ohio.df$county == 'Grand Total'), ]
 ohio.df$onset_date <- mdy(ohio.df$onset_date)
 
 ohio.df <- ohio.df %>% 
-  #group_by(county, sex, age_range) %>%
-  #complete(onset_date = seq.Date(min(ohio.df$onset_date), max(ohio.df$onset_date), by = 'day')) %>%
-  #ungroup() %>%
+  group_by(county, sex, age_range) %>%
+  complete(onset_date = seq.Date(min(ohio.df$onset_date), max(ohio.df$onset_date), by = 'day')) %>%
+  ungroup() %>%
   select(-death_date) %>%
-  #replace(is.na(.), 0) %>%
+  replace(is.na(.), 0) %>%
   rename(date = onset_date)
 
 ohio.df <- calc.totals(ohio.df)
