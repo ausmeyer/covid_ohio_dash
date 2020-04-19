@@ -21,13 +21,12 @@ library(shinycssloaders)
 library(sf)
 library(albersusa)
 library(hues)
-library(digest)
 
 set.seed(5)
 
 options(spinner.color="#3e5fff")
 
-suppressWarnings(source('load_clean_data_ohio.R'))
+suppressWarnings(load('data.rda'))
 
 all.choices <- c(unique(ohio.df$county))
 all.choices <- all.choices[all.choices != 'Total']
@@ -979,10 +978,15 @@ server <- function(input, output, session) {
     
     observe({
         # invalidate 6 hrs later
-        invalidateLater(1000 * 60 * 60 * 6, session)
+        invalidateLater(1000 * 60 * 60 * 4, session)
 
-        suppressWarnings(source('load_clean_data_ohio.R'))
-
+        system(paste0('Rscript load_clean_data_ohio.R'), wait = FALSE)
+    })
+    
+    observe({
+        invalidateLater(1000 * 60 * 30)
+        
+        suppressWarnings(load('data.rda'))
         ohio.df <<- ohio.df
         normalized.df <<- normalized.df
     })

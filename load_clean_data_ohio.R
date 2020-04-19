@@ -1,3 +1,6 @@
+library(tidyverse)
+library(lubridate)
+
 calc.totals <- function(this.df) {
   aggregate.df <- this.df %>% 
     group_by(date, age_range, sex) %>% 
@@ -56,11 +59,11 @@ ohio.df <- ohio.df[!(ohio.df$county == 'Grand Total'), ]
 ohio.df$onset_date <- mdy(ohio.df$onset_date)
 
 ohio.df <- ohio.df %>% 
-  #group_by(county, sex, age_range) %>%
-  #complete(onset_date = seq.Date(min(ohio.df$onset_date), max(ohio.df$onset_date), by = 'day')) %>%
-  #ungroup() %>%
+  group_by(county, sex, age_range) %>%
+  complete(onset_date = seq.Date(min(ohio.df$onset_date), max(ohio.df$onset_date), by = 'day')) %>%
+  ungroup() %>%
   select(-death_date) %>%
-  #replace(is.na(.), 0) %>%
+  replace(is.na(.), 0) %>%
   rename(date = onset_date)
 
 ohio.df <- calc.totals(ohio.df)
@@ -95,3 +98,5 @@ normalized.df <- normalized.df %>%
                                               population$pop[population$sex == .data$sex & 
                                                                population$age_range == .data$age_range & 
                                                                population$county == .data$county]))
+
+save(ohio.df, normalized.df, file = 'data.rda')
