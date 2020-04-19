@@ -280,6 +280,7 @@ server <- function(input, output, session) {
         if(these.data$transformation != 'none')
             p <- p + scale_y_continuous(trans = these.data$transformation)
         
+        #if(!as.logical(these.data$facet)) {
         p <- p + theme_minimal_hgrid(base.size, rel_small = 1) +
             theme(legend.position = "bottom",
                   legend.justification = "right",
@@ -290,6 +291,7 @@ server <- function(input, output, session) {
                   axis.title.x = element_text(margin = unit(c(3, 0, 0, 0), "mm")),
                   axis.title.y = element_text(margin = unit(c(0, 3, 0, 0), "mm"))
             ) 
+        #}
         
         plottable.df <- local.df[!(local.df$county %in% highlights), ]
         
@@ -365,7 +367,7 @@ server <- function(input, output, session) {
             tmp.col <- unlist(these.colors)
             names(tmp.col) <- NULL
             tmp.col <- sample(tmp.col, length(these.data$ages))
-            
+
             p <- p +
                 geom_line(data = plottable.df,
                           aes(x = date, 
@@ -569,11 +571,11 @@ server <- function(input, output, session) {
         p <- ggplot()
         
         # define base sizes
-        base.size <- 11
-        point.size <- 3.5
-        line.size <- 1.7
-        font.size <- 18
-        ano.size <- 6
+        base.size <- 22
+        point.size <- 6.5
+        line.size <- 2.2
+        font.size <- 28
+        ano.size <- 8
         
         if(these.data$transformation != 'none')
             p <- p + scale_y_continuous(trans = these.data$transformation)
@@ -591,7 +593,7 @@ server <- function(input, output, session) {
         #}
         
         plottable.df <- local.df[!(local.df$county %in% highlights), ]
-        
+
         if(s == 'caseCount')
             tooltip.label <- 'Daily Cases:'
         if(s == 'hospitalizedCount')
@@ -660,7 +662,7 @@ server <- function(input, output, session) {
                     )
                 ) 
         }
-        
+    
         if(length(these.data$sexes) > 1 & length(these.data$counties) == 1) {
             tmp.col <- unlist(these.colors)
             names(tmp.col) <- NULL
@@ -1038,12 +1040,12 @@ server <- function(input, output, session) {
         shuffleColors()
         output$casesPlotPNG <- renderPlot(renderCasesPNG(input.settings, colors.list))
         output$casesPlotSVG <- renderGirafe(girafe(ggobj = renderCasesSVG(input.settings, colors.list),
-                                                   width_svg = 10,
-                                                   height_svg = 10 * 5 / 7,
+                                                   width_svg = 20,
+                                                   height_svg = 20 * 5 / 7,
                                                    options = list(opts_selection(type = "single", only_shiny = FALSE))))
         output$mapPlot <- renderGirafe(girafe(ggobj = renderMap(input.settings),
-                                              width_svg = 10,
-                                              height_svg = 10 * 5 / 7,
+                                              width_svg = 20,
+                                              height_svg = 20 * 5 / 7,
                                               options = list(opts_selection(type = "single", only_shiny = FALSE))))
     })
 }
