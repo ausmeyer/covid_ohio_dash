@@ -911,7 +911,7 @@ server <- function(input, output, session) {
                     high <- 1
                 
                 start <- 10^mean(c(log10(low), log10(high)))
-                print(start)
+  
                 date_seq <- 0:(max(doubling.df$date) - min(doubling.df$date))
                 ys <- lapply(c(2, 3, 5, 7), function(x) doubling_time(start, x, date_seq))
                 
@@ -952,8 +952,7 @@ server <- function(input, output, session) {
         p <- p + theme_minimal_hgrid(base.size, rel_small = 1) +
             theme(legend.position = 'none',
                   axis.title = element_text(size = font.size),
-                  axis.title.x = element_text(margin = unit(c(3, 0, 0, 0), "mm")),
-                  axis.title.y = element_text(margin = unit(c(0, 5, 0, 0), "mm"))
+                  axis.text.x = element_text(angle = 90)
             ) 
         
         plottable.df <- local.df[!(local.df$county %in% highlights), ]
@@ -1402,10 +1401,19 @@ server <- function(input, output, session) {
                                               width_svg = 20,
                                               height_svg = 20 * 5 / 7,
                                               options = list(opts_selection(type = "single", only_shiny = FALSE))))
-        output$casesPlotly <- renderPlotly(ggplotly(renderCasesPlotly(input.settings, 
-                                                                      colors.list),
-                                                    height = 1200 * 5 / 7,
-                                                    tooltip = c('text')))
+        gg.p <- ggplotly(renderCasesPlotly(input.settings, 
+                                           colors.list),
+                         height = 1200 * 5 / 7,
+                         tooltip = c('text')) %>%
+          layout(font = list(family = 'Arial'),
+                 xaxis = list(title = list(standoff = 15, font = list(size = 20)), 
+                              tickfont = list(size = 20),
+                              automargin = T),
+                 yaxis = list(title = list(standoff = 15, font = list(size = 20)), 
+                              tickfont = list(size = 20),
+                              automargin = T))
+        
+        output$casesPlotly <- renderPlotly(gg.p)
     })
     
     observe({
@@ -1419,10 +1427,19 @@ server <- function(input, output, session) {
                                               width_svg = 20,
                                               height_svg = 20 * 5 / 7,
                                               options = list(opts_selection(type = "single", only_shiny = FALSE))))
-        output$casesPlotly <- renderPlotly(ggplotly(renderCasesPlotly(input.settings, 
-                                                                      colors.list),
-                                                    height = 1200 * 5 / 7,
-                                                    tooltip = c('text')))
+        gg.p <- ggplotly(renderCasesPlotly(input.settings, 
+                                           colors.list),
+                         height = 1200 * 5 / 7,
+                         tooltip = c('text')) %>%
+          layout(font = list(family = 'Arial'),
+                 xaxis = list(title = list(standoff = 15, font = list(size = 20)), 
+                              tickfont = list(size = 20),
+                              automargin = T),
+                 yaxis = list(title = list(standoff = 15, font = list(size = 20)), 
+                              tickfont = list(size = 20),
+                              automargin = T))
+        
+        output$casesPlotly <- renderPlotly(gg.p)
     })
 }
 
