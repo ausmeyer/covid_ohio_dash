@@ -202,6 +202,11 @@ ui <- fluidPage(
     
     br(),br(),
     
+    "Complaints/Suggestions Department: ",
+    a("@austingmeyer", href="https://twitter.com/austingmeyer"),
+    
+    br(),
+    
     "Data from: ",
     a("https://coronavirus.ohio.gov/wps/portal/gov/covid-19/home/dashboard", href="https://coronavirus.ohio.gov/wps/portal/gov/covid-19/home/dashboard"),
     
