@@ -1,3 +1,7 @@
+library(tabulizer)
+library(purrr)
+library(tidyverse)
+
 load('population.Rda')
 
 prison_df <- extract_tables('https://coronavirus.ohio.gov/static/DRCCOVID-19Information.pdf')

@@ -194,6 +194,8 @@ ui <- fluidPage(
         The Guide option will overlay place a doubling time guide; it can only be selected if y-axis is Log10 and the data is Aligned.
         For the Map, if ages or sexes other than Total are needed, select only the 'Total' option from the counties menu and nothing else.
         If 'Total' is included for ages or sex, the map will only use Total. If any other combination of ages or sexes is picked, it will sum the categories selected.
+        Due to lack of time series data, removing the prison population is only available on the map. Removing prisoners requires sex and age be set to 'Total' only. 
+        At this time, only prisoner Total Cases and Total Deaths can be removed. Removing prisoners assumes the counts have been applied to the county where the prison is located.
     "
     
     ,
