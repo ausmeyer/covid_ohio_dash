@@ -26,6 +26,7 @@ library(digest)
 set.seed(5)
 options(spinner.color="#3e5fff")
 suppressWarnings(load('data.rda'))
+suppressWarnings(load('prison.rda'))
 
 all.choices <- c(unique(ohio.df$county))
 all.choices <- all.choices[all.choices != 'Total']
@@ -101,7 +102,7 @@ ui <- fluidPage(
                          fluidRow(
                              column(12,
                                     radioButtons("normalize", 
-                                                 h4("Normalize Data"), 
+                                                 h4("Normalize by Population"), 
                                                  choices = list('Yes' = T, 'No' = F),
                                                  selected = list('No' = F)
                                     )
@@ -125,6 +126,15 @@ ui <- fluidPage(
                                                 multiple = TRUE,
                                                 choices = all.sexes,
                                                 selected = 'Total')
+                             )
+                         ),
+                         fluidRow(
+                             column(12,
+                                    radioButtons("prisoners", 
+                                                 h5("Remove Prisoners (Map only)"), 
+                                                 choices = list('Yes' = T, 'No' = F),
+                                                 selected = list('No' = F)
+                                    )
                              )
                          ),
                          fluidRow(
@@ -367,7 +377,7 @@ server <- function(input, output, session) {
             tmp.col <- unlist(these.colors)
             names(tmp.col) <- NULL
             tmp.col <- sample(tmp.col, length(these.data$ages))
-
+            
             p <- p +
                 geom_line(data = plottable.df,
                           aes(x = date, 
@@ -593,7 +603,7 @@ server <- function(input, output, session) {
         #}
         
         plottable.df <- local.df[!(local.df$county %in% highlights), ]
-
+        
         if(s == 'caseCount')
             tooltip.label <- 'Daily Cases:'
         if(s == 'hospitalizedCount')
@@ -662,7 +672,7 @@ server <- function(input, output, session) {
                     )
                 ) 
         }
-    
+        
         if(length(these.data$sexes) > 1 & length(these.data$counties) == 1) {
             tmp.col <- unlist(these.colors)
             names(tmp.col) <- NULL
@@ -868,10 +878,14 @@ server <- function(input, output, session) {
         if(s == 'deathCount' | s == 'aggregateDeathCount')
             s <- 'deathCount'
         
-        if(as.logical(these.data$normalize))
+        if(as.logical(these.data$normalize)) {
             local.df <- normalized.df[normalized.df$sex %in% these.data$sexes & normalized.df$age_range %in% these.data$ages, ]
-        else
+            this.prison_summary <- normalized_prison_summary
+        }
+        else {
             local.df <- ohio.df[ohio.df$sex %in% these.data$sexes & ohio.df$age_range %in% these.data$ages, ]
+            this.prison_summary <- prison_summary
+        }
         
         if('Total' %in% these.data$ages)
             local.df <- local.df[local.df$age_range == 'Total', ]
@@ -881,6 +895,15 @@ server <- function(input, output, session) {
         ohio.summary.df <- local.df %>% 
             group_by(county) %>% 
             summarise(caseCount = sum(caseCount), deathCount = sum(deathCount), hospitalizedCount = sum(hospitalizedCount))
+        
+        if(as.logical(these.data$prisoners)) {
+            tmp.df <- ohio.summary.df[na.omit(match(this.prison_summary$county, ohio.summary.df$county)), ]
+            tmp.df$caseCount <- tmp.df$caseCount - this.prison_summary$caseCount
+            tmp.df$deathCount <- tmp.df$deathCount - this.prison_summary$deathCount
+            
+            ohio.summary.df$caseCount[ohio.summary.df$county %in% tmp.df$county] <- tmp.df$caseCount
+            ohio.summary.df$deathCount[ohio.summary.df$county %in% tmp.df$county] <- tmp.df$deathCount
+        }
         
         todays.ohio.df <- ohio.summary.df[match(as.character(ohio_sf$name), ohio.summary.df$county), ]
         ohio_sf <- bind_cols(ohio_sf, todays.ohio.df)
@@ -985,7 +1008,8 @@ server <- function(input, output, session) {
                                 align = input$align,
                                 num_align = input$num_align,
                                 exponentials = input$exponentials,
-                                normalize = input$normalize)
+                                normalize = input$normalize,
+                                prisoners = input$prisoners)
     }) %>% debounce(1500)})
     
     observe({
@@ -1002,6 +1026,23 @@ server <- function(input, output, session) {
     
     observe({
         inputData()
+        if(input$ageRange != 'Total' | 
+           input$sex != 'Total' | 
+           length(input$ageRange) != 1 | 
+           length(input$sex) != 1) {
+            updateRadioButtons(session, "prisoners",
+                               selected = list('No' = F))
+        }
+    })
+    
+    observe(shinyjs::toggleState("prisoners",
+                                     length(input$ageRange) == 1 &
+                                     length(input$sex) == 1 &
+                                     'Total' %in% input$ageRange & 
+                                     'Total' %in% input$sex))
+    
+    observe({
+        inputData()
         if(length(input$countyChoice) != 1 | length(input$ageRange) != 1) {
             updatePickerInput(session, "sex",
                               selected = list('Total'))
@@ -1009,7 +1050,8 @@ server <- function(input, output, session) {
     })
     
     observe(shinyjs::toggleState("sex", 
-                                 (length(input$countyChoice) == 1) & length(input$ageRange) == 1))
+                                 (length(input$countyChoice) == 1) & 
+                                     length(input$ageRange) == 1))
     
     observe({
         inputData()
