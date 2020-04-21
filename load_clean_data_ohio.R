@@ -52,7 +52,7 @@ load('population.Rda')
 ohio.df <- read_csv('https://coronavirus.ohio.gov/static/COVIDSummaryData.csv')
 
 names(ohio.df) <- c('county', 'sex', 'age_range',
-                    'onset_date', 'death_date', 
+                    'onset_date', 'death_date', 'admission_date',
                     'caseCount', 'deathCount', 'hospitalizedCount')
 
 ohio.df <- ohio.df[!(ohio.df$county == 'Grand Total'), ]
@@ -62,7 +62,7 @@ ohio.df <- ohio.df %>%
   group_by(county, sex, age_range) %>%
   complete(onset_date = seq.Date(min(ohio.df$onset_date), max(ohio.df$onset_date), by = 'day')) %>%
   ungroup() %>%
-  select(-death_date) %>%
+  select(-c(death_date, admission_date)) %>%
   replace(is.na(.), 0) %>%
   rename(date = onset_date)
 
