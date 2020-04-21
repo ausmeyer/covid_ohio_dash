@@ -6,8 +6,8 @@ load('population.Rda')
 
 prison_df <- extract_tables('https://coronavirus.ohio.gov/static/DRCCOVID-19Information.pdf')
 
-prison_colnames <- trimws(pmap(as_tibble(t(as.data.frame(prison_df[2])[1:4, -6])), paste))
-df_2 <- as_tibble(as.data.frame(prison_df[2])[-c(1:4),-6], .name_repair = ~ prison_colnames)
+prison_colnames <- trimws(pmap(as_tibble(t(as.data.frame(prison_df[2])[1:4, -c(5,10)])), paste))
+df_2 <- as_tibble(as.data.frame(prison_df[2])[-c(1:4), -c(5,10)], .name_repair = ~ prison_colnames)
 df_3 <- as_tibble(as.data.frame(prison_df[3]), .name_repair = ~prison_colnames)
 
 prison_df <- bind_rows(df_2, df_3)
