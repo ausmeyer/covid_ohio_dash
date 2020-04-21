@@ -949,11 +949,8 @@ server <- function(input, output, session) {
         if(these.data$transformation != 'none')
             p <- p + scale_y_continuous(trans = these.data$transformation)
         
-        p <- p + theme_minimal_hgrid(base.size, rel_small = 1) +
-            theme(legend.position = 'none',
-                  axis.title = element_text(size = font.size),
-                  axis.text.x = element_text(angle = 90)
-            ) 
+        p <- p + theme_minimal_hgrid() +
+            theme(legend.position = 'none') 
         
         plottable.df <- local.df[!(local.df$county %in% highlights), ]
         
