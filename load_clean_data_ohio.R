@@ -5,7 +5,6 @@ calc.totals <- function(this.df) {
   aggregate.df <- this.df %>% 
     group_by(date, age_range, sex) %>% 
     summarise(county = 'Total',  
-              death_date = 'NA',
               caseCount = sum(caseCount), 
               deathCount = sum(deathCount), 
               hospitalizedCount = sum(hospitalizedCount))
@@ -16,7 +15,6 @@ calc.totals <- function(this.df) {
     group_by(county, date) %>% 
     summarise(sex = 'Total',
               age_range = 'Total', 
-              death_date = 'NA', 
               caseCount = sum(caseCount), 
               deathCount = sum(deathCount), 
               hospitalizedCount = sum(hospitalizedCount))
@@ -24,7 +22,6 @@ calc.totals <- function(this.df) {
   aggregate.df.2 <- this.df %>% 
     group_by(county, date, sex) %>% 
     summarise(age_range = 'Total', 
-              death_date = 'NA', 
               caseCount = sum(caseCount), 
               deathCount = sum(deathCount), 
               hospitalizedCount = sum(hospitalizedCount))
@@ -32,7 +29,6 @@ calc.totals <- function(this.df) {
   aggregate.df.3 <- this.df %>% 
     group_by(county, date, age_range) %>% 
     summarise(sex = 'Total', 
-              death_date = 'NA', 
               caseCount = sum(caseCount), 
               deathCount = sum(deathCount), 
               hospitalizedCount = sum(hospitalizedCount))
@@ -73,8 +69,7 @@ normalized.df <- ohio.df[ohio.df$sex %in% unique(population$sex) &
 
 normalized.df <- normalized.df %>% 
   group_by(county, sex, age_range, date) %>%
-  mutate(death_date = death_date, 
-         caseCount = round(caseCount * 1000000 / 
+  mutate(caseCount = round(caseCount * 1000000 / 
                              population$pop[population$sex == .data$sex & 
                                               population$age_range == .data$age_range & 
                                               population$county == .data$county]),

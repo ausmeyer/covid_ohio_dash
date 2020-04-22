@@ -11,7 +11,7 @@ packs.to.load <- c('shiny', 'shinyjs', 'shinyWidgets',
                    'plotly', 'tidyverse', 'lubridate', 
                    'cowplot', 'lemon', 'colorspace', 'scales',
                    'shinycssloaders', 'sf', 'albersusa', 'hues',
-                   'zoo')
+                   'zoo', 'ggiraph')
 
 sapply(packs.to.load, require, character.only = TRUE)
 
@@ -227,17 +227,21 @@ server <- function(input, output, session) {
     highlights <- these.data$highlights
     
     # pick local data to use from and normalization options
-    if(as.logical(these.data$normalize))
+    if(as.logical(these.data$normalize)) {
       local.df <- normalized.df[normalized.df$county %in% these.data$counties, ]
-    else
+      this.prison_summary <- normalized_prison_summary
+    }
+    else {
       local.df <- ohio.df[ohio.df$county %in% these.data$counties, ]
+      this.prison_summary <- prison_summary
+    }
     
     # smooth data if requested
     local.df <- local.df %>% 
       group_by(county, sex, age_range) %>%
       select(c(date, all_of(s))) %>% 
       arrange(date) %>%
-      mutate(s = rollmeanr(.data[[s]], as.numeric(input.settings$smooth), fill = NA))
+      mutate(!!s := rollmeanr(.data[[s]], as.numeric(input.settings$smooth), fill = NA))
       
     # generate alignment of data and create exponential growth guides
     if(as.logical(these.data$align)) {
@@ -247,7 +251,9 @@ server <- function(input, output, session) {
         summarise(start_date = min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE))
       
       if(nrow(start_dates) > 1)
-        local.df <- local.df[order(local.df$county), ][unlist(sapply(1:nrow(start_dates), function(x) local.df$date[local.df$county == start_dates$county[x]] >= start_dates$start_date[x])), ]
+        local.df <- local.df[order(local.df$county), ][unlist(sapply(1:nrow(start_dates), 
+                                                                     function(x) 
+                                                                       local.df$date[local.df$county == start_dates$county[x]] >= start_dates$start_date[x])), ]
       
       doubling.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
       
@@ -255,7 +261,9 @@ server <- function(input, output, session) {
         doubling.df <- doubling.df[doubling.df$county %in% highlights, ]
       
       if(nrow(start_dates) > 1)
-        minimums <- doubling.df[order(doubling.df$county), ][unlist(lapply(1:nrow(start_dates), function(x) doubling.df$date[doubling.df$county == start_dates$county[x]] == start_dates$start_date[x])), ]
+        minimums <- doubling.df[order(doubling.df$county), ][unlist(lapply(1:nrow(start_dates), 
+                                                                           function(x) 
+                                                                             doubling.df$date[doubling.df$county == start_dates$county[x]] == start_dates$start_date[x])), ]
       
       if(as.logical(these.data$exp)) {
         low <- min(minimums[[s]])
@@ -301,7 +309,7 @@ server <- function(input, output, session) {
     # define base sizes
     base.size <- 14
     point.size <- 3.5
-    line.size <- 1.25
+    line.size <- 1.5
     font.size <- 16
     
     # change sizes for plotly
@@ -485,6 +493,18 @@ server <- function(input, output, session) {
     }
     
     if(as.logical(these.data$exp)) {
+      this.max.x <- max(exp.df$date)
+      this.max.y.multi <- 1.1
+      this.size <- 6
+      this.increment <- 0.5
+      
+      if(plotly.settings) {
+        this.max.x <- max(exp.df$date) * 0.9
+        this.max.y.multi <- 1.2
+        this.size <- 4
+        this.increment <- 0.25
+      }
+        
       p <- p + geom_line(data = exp.df,
                          aes(x = date,
                              y = y,
@@ -494,46 +514,46 @@ server <- function(input, output, session) {
                          size = line.size * 0.9,
                          linetype = "dashed") +
         annotate("text",
-                 x = max(exp.df$date) * 0.99,
-                 y = max(exp.df$y[exp.df$ds == '1 day']),
+                 x = this.max.x * 0.99,
+                 y = this.max.y.multi * max(exp.df$y[exp.df$ds == '1 day']),
                  label = "doubling in day",
-                 size = 6,
+                 size = this.size,
                  hjust = 1,
                  vjust = 0,
                  color = 'gray50',
                  alpha = 1) +
         annotate("text",
-                 x = max(exp.df$date),
-                 y = max(exp.df$y[exp.df$ds == '2 days']),
+                 x = this.max.x,
+                 y = this.max.y.multi * max(exp.df$y[exp.df$ds == '2 days']),
                  label = "doubling in 2 days",
-                 size = 5.5,
+                 size = this.size - this.increment * 1,
                  hjust = 1,
                  vjust = -0.25,
                  color = 'gray50',
                  alpha = 1) +
         annotate("text",
-                 x = max(exp.df$date),
-                 y = max(exp.df$y[exp.df$ds == '3 days']),
+                 x = this.max.x,
+                 y = this.max.y.multi * max(exp.df$y[exp.df$ds == '3 days']),
                  label = "doubling in 3 days",
-                 size = 5,
+                 size = this.size - this.increment * 2,
                  hjust = 1,
                  vjust = -0.25,
                  color = 'gray50',
                  alpha = 1) +
         annotate("text",
-                 x = max(exp.df$date),
-                 y = max(exp.df$y[exp.df$ds == '5 days']),
+                 x = this.max.x,
+                 y = this.max.y.multi * max(exp.df$y[exp.df$ds == '5 days']),
                  label = "doubling in 5 days",
-                 size = 4.5,
+                 size = this.size - this.increment * 3,
                  hjust = 1,
                  vjust = -0.25,
                  color = 'gray50',
                  alpha = 1) +
         annotate("text",
-                 x = max(exp.df$date),
-                 y = max(exp.df$y[exp.df$ds == '7 days']),
+                 x = this.max.x,
+                 y = this.max.y.multi * max(exp.df$y[exp.df$ds == '7 days']),
                  label = "doubling in 7 days",
-                 size = 4,
+                 size = this.size - this.increment * 4,
                  hjust = 1,
                  vjust = -0.25,
                  color = 'gray50',
@@ -754,9 +774,9 @@ server <- function(input, output, session) {
     if(!is.null(input.settings$ages) &
        !is.null(input.settings$sexes)) {
       if((input.settings$ages != 'Total' | 
-          input.settings$sexes != 'Total') & 
-         (length(input.settings$ages) > 1 | 
-          length(input.settings$sexes) > 1)) {
+          input.settings$sexes != 'Total') |
+         length(input.settings$ages) > 1 | 
+          length(input.settings$sexes) > 1) {
         
         updateRadioButtons(session, "prisoners",
                            selected = list('No' = F))
