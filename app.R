@@ -7,22 +7,13 @@
 #    http://shiny.rstudio.com/
 #
 
-library(shiny)
-library(shinyjs)
-library(shinyWidgets)
-library(plotly)
-library(ggiraph)
-library(tidyverse)
-library(lubridate)
-library(cowplot)
-library(lemon)
-library(colorspace)
-library(scales)
-library(shinycssloaders)
-library(sf)
-library(albersusa)
-library(hues)
-library(digest)
+packs.to.load <- c('shiny', 'shinyjs', 'shinyWidgets', 
+                   'plotly', 'tidyverse', 'lubridate', 
+                   'cowplot', 'lemon', 'colorspace', 'scales',
+                   'shinycssloaders', 'sf', 'albersusa', 'hues',
+                   'zoo')
+
+sapply(packs.to.load, require, character.only = TRUE)
 
 set.seed(5)
 options(spinner.color="#3e5fff")
@@ -40,9 +31,9 @@ all.sexes <- c('Total', 'Female', 'Male', 'Unknown')
 all.series <- list('Daily Cases' = 'caseCount', 
                    'Daily Hospitalizations' = 'hospitalizedCount',
                    'Daily Deaths' = 'deathCount',
-                   'Total Cases' = 'aggregateCaseCount',
-                   'Total Hospitalizations' = 'aggregateHospitalizedCount',
-                   'Total Deaths' = 'aggregateDeathCount')
+                   'Aggregate Cases' = 'aggregateCaseCount',
+                   'Aggregate Hospitalizations' = 'aggregateHospitalizedCount',
+                   'Aggregate Deaths' = 'aggregateDeathCount')
 
 all.transformations <- list('Linear' = 'none', 
                             'Log10' = 'log10')
@@ -132,6 +123,13 @@ ui <- fluidPage(
                      ),
                      fluidRow(
                        column(12,
+                              numericInput("smooth", 
+                                           h5("Smooth over Window (Days)"), 
+                                           value = 1)
+                       )
+                     ),
+                     fluidRow(
+                       column(12,
                               radioButtons("prisoners", 
                                            h5("Remove Prisoners (Map only)"), 
                                            choices = list('Yes' = T, 'No' = F),
@@ -175,9 +173,8 @@ ui <- fluidPage(
     # Show a plot of the generated distribution
     mainPanel(width = 8,
               tabsetPanel(type = "tabs",
-                          tabPanel("Basic Plot", plotOutput("casesPlotPNG", height = 1200 * 5 / 7) %>% withSpinner()),
+                          tabPanel("Basic Plot", plotOutput("casesPlot", height = 1200 * 5 / 7) %>% withSpinner()),
                           tabPanel('Interactive Plot', plotlyOutput('casesPlotly') %>% withSpinner()),
-                          #tabPanel("Interactive Plot", girafeOutput("casesPlotSVG") %>% withSpinner()),
                           tabPanel("Map", girafeOutput("mapPlot") %>% withSpinner())
               )
     )
@@ -223,17 +220,26 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
   
-  renderCasesPNG <- function(these.data, these.colors) {
+  renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     
     s <- these.data$series
     
     highlights <- these.data$highlights
     
+    # pick local data to use from and normalization options
     if(as.logical(these.data$normalize))
       local.df <- normalized.df[normalized.df$county %in% these.data$counties, ]
     else
       local.df <- ohio.df[ohio.df$county %in% these.data$counties, ]
     
+    # smooth data if requested
+    local.df <- local.df %>% 
+      group_by(county, sex, age_range) %>%
+      select(c(date, all_of(s))) %>% 
+      arrange(date) %>%
+      mutate(s = rollmeanr(.data[[s]], as.numeric(input.settings$smooth), fill = NA))
+      
+    # generate alignment of data and create exponential growth guides
     if(as.logical(these.data$align)) {
       
       start_dates <- local.df %>%
@@ -278,16 +284,18 @@ server <- function(input, output, session) {
       local.df <- local.df %>% group_by(county) %>% mutate(date = date - min(date))
     }
     
+    # get only the requested set of data for local use
     local.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
     
+    # get only the local colors
     local.colors <- unlist(these.colors[unique(local.df$county)])
-    if(length(local.colors) == 0)
-      local.colors <- colors[1]
     
+    # set colors for non-highlighted counties to gray
     if(length(highlights) > 0) {
       sapply(names(local.colors), function(x) if(!(x %in% highlights)) {local.colors[x] <<- '#DEDEDE'})
     }
     
+    # establish plot canvas
     p <- ggplot()
     
     # define base sizes
@@ -295,6 +303,14 @@ server <- function(input, output, session) {
     point.size <- 3.5
     line.size <- 1.25
     font.size <- 16
+    
+    # change sizes for plotly
+    if(plotly.settings) {
+      base.size <- 12
+      point.size <- 2.0
+      line.size <- 1.0
+      font.size <- 13
+    }
     
     if(these.data$transformation != 'none')
       p <- p + scale_y_continuous(trans = these.data$transformation)
@@ -310,9 +326,45 @@ server <- function(input, output, session) {
             axis.title.y = element_text(margin = unit(c(0, 3, 0, 0), "mm"))
       ) 
     
+    if(plotly.settings)
+      p <- p + theme(legend.position = 'none')
+    
     plottable.df <- local.df[!(local.df$county %in% highlights), ]
     
+    if(s == 'caseCount')
+      tooltip.label <- 'Daily Cases:'
+    if(s == 'hospitalizedCount')
+      tooltip.label <- 'Daily Hospitalizations:'
+    if(s == 'deathCount')
+      tooltip.label <- 'Daily Deaths:'
+    if(s == 'aggregateCaseCount')
+      tooltip.label <- 'Aggregate Cases:'
+    if(s == 'aggregateHospitalizedCount')
+      tooltip.label <- 'Aggregate Hospitalizations:'
+    if(s == 'aggregateDeathCount')
+      tooltip.label <- 'Aggregate Deaths:'
+    
+    if(s == 'caseCount' & as.logical(these.data$normalize))
+      tooltip.label <- 'Daily Cases per million:'
+    if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
+      tooltip.label <- 'Daily Hospitalizations per million:'
+    if(s == 'deathCount' & as.logical(these.data$normalize))
+      tooltip.label <- 'Daily Deaths per million:'
+    if(s == 'aggregateCaseCount' & as.logical(these.data$normalize))
+      tooltip.label <- 'Aggregate Cases per million:'
+    if(s == 'aggregateHospitalizedCount' & as.logical(these.data$normalize))
+      tooltip.label <- 'Aggregate Hospitalizations per million:'
+    if(s == 'aggregateDeathCount' & as.logical(these.data$normalize))
+      tooltip.label <- 'Aggregate Deaths per million:'
+    
     if(length(these.data$sexes) == 1 & length(these.data$ages) == 1) {
+      tooltip.func <- function(dat) {
+        this.list <- unlist(lapply(1:nrow(dat), function(i) paste('County:', dat$county[i], '\n',
+                                                                  'Date:', dat$date[i], '\n',
+                                                                  tooltip.label, as.character(dat[[s]][i]))))
+        return(this.list)
+      }
+      
       p <- p +
         geom_line(data = plottable.df,
                   aes(x = date, 
@@ -324,7 +376,8 @@ server <- function(input, output, session) {
                    aes(x = date, 
                        y = .data[[s]], 
                        color = county,
-                       fill = county),
+                       fill = county,
+                       text = tooltip.func(plottable.df)),
                    size = point.size, 
                    alpha = 0.6) +
         xlab('') +
@@ -352,6 +405,14 @@ server <- function(input, output, session) {
       names(tmp.col) <- NULL
       tmp.col <- sample(tmp.col, length(these.data$sexes))
       
+      tooltip.func <- function(dat) {
+        this.list <- unlist(lapply(1:nrow(dat), function(i) paste('County:', these.data$counties[1], '\n', 
+                                                                  'Date:', dat$date[i], '\n',
+                                                                  'Sex:', as.character(dat[['sex']][i]), '\n',
+                                                                  tooltip.label, as.character(dat[[s]][i]))))
+        return(this.list)
+      }
+      
       p <- p +
         geom_line(data = plottable.df,
                   aes(x = date, 
@@ -363,7 +424,8 @@ server <- function(input, output, session) {
                    aes(x = date, 
                        y = .data[[s]], 
                        color = sex,
-                       fill = sex),
+                       fill = sex,
+                       text = tooltip.func(plottable.df)),
                    size = point.size, 
                    alpha = 0.6) +
         xlab('') +
@@ -385,6 +447,14 @@ server <- function(input, output, session) {
       names(tmp.col) <- NULL
       tmp.col <- sample(tmp.col, length(these.data$ages))
       
+      tooltip.func <- function(dat) {
+        this.list <- unlist(lapply(1:nrow(dat), function(i) paste('County:', these.data$counties[1], '\n', 
+                                                                  'Date:', dat$date[i], '\n',
+                                                                  'Age Range:', as.character(dat[['age_range']][i]), '\n',
+                                                                  tooltip.label, as.character(dat[[s]][i]))))
+        return(this.list)
+      }
+      
       p <- p +
         geom_line(data = plottable.df,
                   aes(x = date, 
@@ -396,7 +466,8 @@ server <- function(input, output, session) {
                    aes(x = date, 
                        y = .data[[s]], 
                        color = age_range,
-                       fill = age_range),
+                       fill = age_range,
+                       text = tooltip.func(plottable.df)),
                    size = point.size, 
                    alpha = 0.6) +
         xlab('') +
@@ -481,673 +552,6 @@ server <- function(input, output, session) {
                    aes(x = date, 
                        y = .data[[s]], 
                        color = county,
-                       fill = county),
-                   size = point.size,
-                   alpha = 0.9)
-    }
-    
-    if(as.logical(these.data$align))
-      p <- p + xlab(paste('Days since alignment number'))
-    
-    if(s == 'caseCount')
-      this.legend.title <- 'Daily number of COVID-19 cases'
-    if(s == 'hospitalizedCount')
-      this.legend.title <- 'Daily number of COVID-19 hospitalized'
-    if(s == 'deathCount')
-      this.legend.title <- 'Daily number of COVID-19 deaths'
-    if(s == 'aggregateCaseCount')
-      this.legend.title <- 'Total number of COVID-19 cases'
-    if(s == 'aggregateHospitalizedCount')
-      this.legend.title <- 'Total number of COVID-19 hospitalized'
-    if(s == 'aggregateDeathCount')
-      this.legend.title <- 'Total number of COVID-19 deaths'
-    
-    if(s == 'caseCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Daily COVID-19 cases per million'
-    if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Daily COVID-19 hospitalizations per million'
-    if(s == 'deathCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Daily COVID-19 deaths per million'
-    if(s == 'aggregateCaseCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Total COVID-19 cases per million'
-    if(s == 'aggregateHospitalizedCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Total COVID-19 hospitalizations per million'
-    if(s == 'aggregateDeathCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Total COVID-19 deaths per million'
-    
-    p <- p + ylab(this.legend.title)
-    
-    return(p)
-  }
-  
-  renderCasesSVG <- function(these.data, these.colors) {
-    
-    s <- these.data$series
-    
-    highlights <- these.data$highlights
-    
-    if(as.logical(these.data$normalize))
-      local.df <- normalized.df[normalized.df$county %in% these.data$counties, ]
-    else
-      local.df <- ohio.df[ohio.df$county %in% these.data$counties, ]
-    
-    if(as.logical(these.data$align)) {
-      
-      start_dates <- local.df %>%
-        group_by(county) %>%
-        summarise(start_date = min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE))
-      
-      if(nrow(start_dates) > 1)
-        local.df <- local.df[order(local.df$county), ][unlist(sapply(1:nrow(start_dates), function(x) local.df$date[local.df$county == start_dates$county[x]] >= start_dates$start_date[x])), ]
-      
-      doubling.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
-      
-      if(length(highlights) > 0)
-        doubling.df <- doubling.df[doubling.df$county %in% highlights, ]
-      
-      if(nrow(start_dates) > 1)
-        minimums <- doubling.df[order(doubling.df$county), ][unlist(lapply(1:nrow(start_dates), function(x) doubling.df$date[doubling.df$county == start_dates$county[x]] == start_dates$start_date[x])), ]
-      
-      if(as.logical(these.data$exp)) {
-        low <- min(minimums[[s]])
-        high <- max(minimums[[s]])
-        
-        if(low == 0)
-          low <- 1
-        if(high == 0)
-          high <- 1
-        
-        start <- 10^mean(c(log10(low), log10(high)))
-        
-        date_seq <- 0:(max(doubling.df$date) - min(doubling.df$date))
-        ys <- lapply(c(2, 3, 5, 7), function(x) doubling_time(start, x, date_seq))
-        
-        exp.df <- tibble(date = rep(min(doubling.df$date) + days(date_seq), 4),
-                         y = unlist(ys),
-                         ds = c(rep('2 days', length(date_seq)),
-                                rep('3 days', length(date_seq)),
-                                rep('5 days', length(date_seq)),
-                                rep('7 days', length(date_seq))))
-        
-        exp.df$date <- exp.df$date - min(doubling.df$date)
-      }
-      
-      local.df <- local.df %>% group_by(county) %>% mutate(date = date - min(date))
-    }
-    
-    local.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
-    
-    local.colors <- unlist(these.colors[unique(local.df$county)])
-    if(length(local.colors) == 0)
-      local.colors <- colors[1]
-    
-    if(length(highlights) > 0) {
-      sapply(names(local.colors), function(x) if(!(x %in% highlights)) {local.colors[x] <<- '#DEDEDE'})
-    }
-    
-    p <- ggplot()
-    
-    # define base sizes
-    base.size <- 22
-    point.size <- 6.5
-    line.size <- 2.2
-    font.size <- 28
-    ano.size <- 8
-    
-    if(these.data$transformation != 'none')
-      p <- p + scale_y_continuous(trans = these.data$transformation)
-    
-    p <- p + theme_minimal_hgrid(base.size, rel_small = 1) +
-      theme(legend.position = "bottom",
-            legend.justification = "right",
-            legend.text = element_text(size = base.size),
-            legend.box.spacing = unit(0, "pt"),
-            legend.title = element_blank(),
-            axis.title = element_text(size = font.size),
-            axis.title.x = element_text(margin = unit(c(3, 0, 0, 0), "mm")),
-            axis.title.y = element_text(margin = unit(c(0, 3, 0, 0), "mm"))
-      ) 
-    #}
-    
-    plottable.df <- local.df[!(local.df$county %in% highlights), ]
-    
-    if(s == 'caseCount')
-      tooltip.label <- 'Daily Cases:'
-    if(s == 'hospitalizedCount')
-      tooltip.label <- 'Daily Hospitalizations:'
-    if(s == 'deathCount')
-      tooltip.label <- 'Daily Deaths:'
-    if(s == 'aggregateCaseCount')
-      tooltip.label <- 'Total Cases:'
-    if(s == 'aggregateHospitalizedCount')
-      tooltip.label <- 'Total Hospitalizations:'
-    if(s == 'aggregateDeathCount')
-      tooltip.label <- 'Total Deaths:'
-    
-    if(s == 'caseCount' & as.logical(these.data$normalize))
-      tooltip.label <- 'Daily Cases per million:'
-    if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
-      tooltip.label <- 'Daily Hospitalizations per million:'
-    if(s == 'deathCount' & as.logical(these.data$normalize))
-      tooltip.label <- 'Daily Deaths per million:'
-    if(s == 'aggregateCaseCount' & as.logical(these.data$normalize))
-      tooltip.label <- 'Total Cases per million:'
-    if(s == 'aggregateHospitalizedCount' & as.logical(these.data$normalize))
-      tooltip.label <- 'Total Hospitalizations per million:'
-    if(s == 'aggregateDeathCount' & as.logical(these.data$normalize))
-      tooltip.label <- 'Total Deaths per million:'
-    
-    if(length(these.data$sexes) == 1 & length(these.data$ages) == 1) {
-      tooltip.func <- function(dat) {
-        this.list <- unlist(lapply(1:nrow(dat), function(i) paste('County: ', dat$county[i], '\n', 
-                                                                  tooltip.label, as.character(dat[[s]][i]))))
-        return(this.list)
-      }
-      
-      p <- p +
-        geom_line(data = plottable.df,
-                  aes(x = date, 
-                      y = .data[[s]], 
-                      color = county),
-                  size = line.size, 
-                  alpha = 0.3) + 
-        geom_point_interactive(data = plottable.df,
-                               aes(x = date, 
-                                   y = .data[[s]], 
-                                   color = county,
-                                   fill = county,
-                                   tooltip = tooltip.func(plottable.df),
-                                   data_id = county),
-                               size = point.size, 
-                               alpha = 0.6) + 
-        xlab('') +
-        scale_color_manual(
-          name = NULL,
-          values = local.colors
-        ) +
-        scale_fill_manual(
-          name = NULL,
-          values = local.colors
-        ) +
-        guides(
-          color = guide_legend(
-            nrow = ceiling(length(unique(local.df$county)) / 8),
-            override.aes = list(
-              linetype = c(rep(0, length(unique(local.df$county)))),
-              shape = c(rep(21, length(unique(local.df$county))))
-            )
-          )
-        ) 
-    }
-    
-    if(length(these.data$sexes) > 1 & length(these.data$counties) == 1) {
-      tmp.col <- unlist(these.colors)
-      names(tmp.col) <- NULL
-      tmp.col <- sample(tmp.col, length(these.data$sexes))
-      
-      tooltip.func <- function(dat) {
-        this.list <- unlist(lapply(1:nrow(dat), function(i) paste('County: ', these.data$counties[1], '\n', 
-                                                                  'Sex:', as.character(dat[['sex']][i]), '\n',
-                                                                  tooltip.label, as.character(dat[[s]][i]))))
-        return(this.list)
-      }
-      
-      p <- p +
-        geom_line(data = plottable.df,
-                  aes(x = date, 
-                      y = .data[[s]], 
-                      color = sex),
-                  size = line.size, 
-                  alpha = 0.3) + 
-        geom_point_interactive(data = plottable.df,
-                               aes(x = date, 
-                                   y = .data[[s]], 
-                                   color = sex,
-                                   fill = sex,
-                                   tooltip = tooltip.func(plottable.df),
-                                   data_id = sex),
-                               size = point.size, 
-                               alpha = 0.6) + 
-        xlab('') +
-        scale_fill_manual(name = NULL, values = tmp.col) +
-        scale_color_manual(name = NULL, values = tmp.col) +
-        guides(
-          color = guide_legend(
-            nrow = ceiling(length(unique(local.df$sex)) / 8),
-            override.aes = list(
-              linetype = c(rep(0, length(unique(local.df$sex)))),
-              shape = c(rep(21, length(unique(local.df$sex))))
-            )
-          )
-        ) 
-    }
-    
-    if(length(these.data$ages) > 1 & length(these.data$counties) == 1) {
-      tmp.col <- unlist(these.colors)
-      names(tmp.col) <- NULL
-      tmp.col <- sample(tmp.col, length(these.data$ages))
-      
-      tooltip.func <- function(dat) {
-        this.list <- unlist(lapply(1:nrow(dat), function(i) paste('County: ', these.data$counties[1], '\n', 
-                                                                  'Age Range:', as.character(dat[['age_range']][i]), '\n',
-                                                                  tooltip.label, as.character(dat[[s]][i]))))
-        return(this.list)
-      }
-      
-      p <- p +
-        geom_line(data = plottable.df,
-                  aes(x = date, 
-                      y = .data[[s]], 
-                      color = age_range),
-                  size = line.size, 
-                  alpha = 0.3) + 
-        geom_point_interactive(data = plottable.df,
-                               aes(x = date, 
-                                   y = .data[[s]], 
-                                   color = age_range,
-                                   fill = age_range,
-                                   tooltip = tooltip.func(plottable.df),
-                                   data_id = age_range),
-                               size = point.size, 
-                               alpha = 0.6) + 
-        xlab('') +
-        scale_fill_manual(name = NULL, values = tmp.col) +
-        scale_color_manual(name = NULL, values = tmp.col) +
-        guides(
-          color = guide_legend(
-            nrow = ceiling(length(unique(local.df$age_range)) / 8),
-            override.aes = list(
-              linetype = c(rep(0, length(unique(local.df$age_range)))),
-              shape = c(rep(21, length(unique(local.df$age_range))))
-            )
-          )
-        )
-    }
-    
-    if(as.logical(these.data$exp)) {
-      p <- p + geom_line(data = exp.df,
-                         aes(x = date,
-                             y = y,
-                             group = ds),
-                         color = 'gray50',
-                         alpha = 0.8,
-                         size = line.size * 0.9,
-                         linetype = "dashed") +
-        annotate("text",
-                 x = max(exp.df$date) * 0.99,
-                 y = max(exp.df$y[exp.df$ds == '1 day']),
-                 label = "doubling in day",
-                 size = 6,
-                 hjust = 1,
-                 vjust = 0,
-                 color = 'gray50',
-                 alpha = 1) +
-        annotate("text",
-                 x = max(exp.df$date),
-                 y = max(exp.df$y[exp.df$ds == '2 days']),
-                 label = "doubling in 2 days",
-                 size = 5.5,
-                 hjust = 1,
-                 vjust = -0.25,
-                 color = 'gray50',
-                 alpha = 1) +
-        annotate("text",
-                 x = max(exp.df$date),
-                 y = max(exp.df$y[exp.df$ds == '3 days']),
-                 label = "doubling in 3 days",
-                 size = 5,
-                 hjust = 1,
-                 vjust = -0.25,
-                 color = 'gray50',
-                 alpha = 1) +
-        annotate("text",
-                 x = max(exp.df$date),
-                 y = max(exp.df$y[exp.df$ds == '5 days']),
-                 label = "doubling in 5 days",
-                 size = 4.5,
-                 hjust = 1,
-                 vjust = -0.25,
-                 color = 'gray50',
-                 alpha = 1) +
-        annotate("text",
-                 x = max(exp.df$date),
-                 y = max(exp.df$y[exp.df$ds == '7 days']),
-                 label = "doubling in 7 days",
-                 size = 4,
-                 hjust = 1,
-                 vjust = -0.25,
-                 color = 'gray50',
-                 alpha = 1)
-    }
-    
-    if(length(highlights) > 0) {
-      highlights.df <- local.df[local.df$county %in% highlights, ]
-      p <- p + geom_line(data = highlights.df,
-                         aes(x = date,
-                             y = .data[[s]],
-                             color = county),
-                         size = line.size,
-                         alpha = 0.8) + 
-        geom_point_interactive(data = highlights.df,
-                               aes(x = date, 
-                                   y = .data[[s]], 
-                                   color = county,
-                                   fill = county,
-                                   tooltip = tooltip.func(highlights.df),
-                                   data_id = county),
-                               size = point.size, 
-                               alpha = 0.6)
-    }
-    
-    if(as.logical(these.data$align))
-      p <- p + xlab(paste('Days since alignment number'))
-    
-    if(s == 'caseCount')
-      this.legend.title <- 'Daily number of COVID-19 cases'
-    if(s == 'hospitalizedCount')
-      this.legend.title <- 'Daily number of COVID-19 hospitalized'
-    if(s == 'deathCount')
-      this.legend.title <- 'Daily number of COVID-19 deaths'
-    if(s == 'aggregateCaseCount')
-      this.legend.title <- 'Total number of COVID-19 cases'
-    if(s == 'aggregateHospitalizedCount')
-      this.legend.title <- 'Total number of COVID-19 hospitalized'
-    if(s == 'aggregateDeathCount')
-      this.legend.title <- 'Total number of COVID-19 deaths'
-    
-    if(s == 'caseCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Daily COVID-19 cases per million'
-    if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Daily COVID-19 hospitalizations per million'
-    if(s == 'deathCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Daily COVID-19 deaths per million'
-    if(s == 'aggregateCaseCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Total COVID-19 cases per million'
-    if(s == 'aggregateHospitalizedCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Total COVID-19 hospitalizations per million'
-    if(s == 'aggregateDeathCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Total COVID-19 deaths per million'
-    
-    p <- p + ylab(this.legend.title)
-    
-    return(p)
-  }
-  
-  renderCasesPlotly <- function(these.data, these.colors) {
-    
-    s <- these.data$series
-    
-    highlights <- these.data$highlights
-    
-    if(as.logical(these.data$normalize))
-      local.df <- normalized.df[normalized.df$county %in% these.data$counties, ]
-    else
-      local.df <- ohio.df[ohio.df$county %in% these.data$counties, ]
-    
-    if(as.logical(these.data$align)) {
-      
-      start_dates <- local.df %>%
-        group_by(county) %>%
-        summarise(start_date = min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE))
-      
-      if(nrow(start_dates) > 1)
-        local.df <- local.df[order(local.df$county), ][unlist(sapply(1:nrow(start_dates), function(x) local.df$date[local.df$county == start_dates$county[x]] >= start_dates$start_date[x])), ]
-      
-      doubling.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
-      
-      if(length(highlights) > 0)
-        doubling.df <- doubling.df[doubling.df$county %in% highlights, ]
-      
-      if(nrow(start_dates) > 1)
-        minimums <- doubling.df[order(doubling.df$county), ][unlist(lapply(1:nrow(start_dates), function(x) doubling.df$date[doubling.df$county == start_dates$county[x]] == start_dates$start_date[x])), ]
-      
-      if(as.logical(these.data$exp)) {
-        low <- min(minimums[[s]])
-        high <- max(minimums[[s]])
-        
-        if(low == 0)
-          low <- 1
-        if(high == 0)
-          high <- 1
-        
-        start <- 10^mean(c(log10(low), log10(high)))
-        
-        date_seq <- 0:(max(doubling.df$date) - min(doubling.df$date))
-        ys <- lapply(c(2, 3, 5, 7), function(x) doubling_time(start, x, date_seq))
-        
-        exp.df <- tibble(date = rep(min(doubling.df$date) + days(date_seq), 4),
-                         y = unlist(ys),
-                         ds = c(rep('2 days', length(date_seq)),
-                                rep('3 days', length(date_seq)),
-                                rep('5 days', length(date_seq)),
-                                rep('7 days', length(date_seq))))
-        
-        exp.df$date <- exp.df$date - min(doubling.df$date)
-      }
-      
-      local.df <- local.df %>% group_by(county) %>% mutate(date = date - min(date))
-    }
-    
-    local.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
-    
-    local.colors <- unlist(these.colors[unique(local.df$county)])
-    if(length(local.colors) == 0)
-      local.colors <- colors[1]
-    
-    if(length(highlights) > 0) {
-      sapply(names(local.colors), function(x) if(!(x %in% highlights)) {local.colors[x] <<- '#DEDEDE'})
-    }
-    
-    p <- ggplot()
-    
-    # define base sizes
-    base.size <- 12
-    point.size <- 2.0
-    line.size <- 1.0
-    font.size <- 13
-    
-    if(these.data$transformation != 'none')
-      p <- p + scale_y_continuous(trans = these.data$transformation)
-    
-    p <- p + theme_minimal_hgrid() +
-      theme(legend.position = 'none') 
-    
-    plottable.df <- local.df[!(local.df$county %in% highlights), ]
-    
-    if(s == 'caseCount')
-      tooltip.label <- 'Daily Cases:'
-    if(s == 'hospitalizedCount')
-      tooltip.label <- 'Daily Hospitalizations:'
-    if(s == 'deathCount')
-      tooltip.label <- 'Daily Deaths:'
-    if(s == 'aggregateCaseCount')
-      tooltip.label <- 'Total Cases:'
-    if(s == 'aggregateHospitalizedCount')
-      tooltip.label <- 'Total Hospitalizations:'
-    if(s == 'aggregateDeathCount')
-      tooltip.label <- 'Total Deaths:'
-    
-    if(s == 'caseCount' & as.logical(these.data$normalize))
-      tooltip.label <- 'Daily Cases per million:'
-    if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
-      tooltip.label <- 'Daily Hospitalizations per million:'
-    if(s == 'deathCount' & as.logical(these.data$normalize))
-      tooltip.label <- 'Daily Deaths per million:'
-    if(s == 'aggregateCaseCount' & as.logical(these.data$normalize))
-      tooltip.label <- 'Total Cases per million:'
-    if(s == 'aggregateHospitalizedCount' & as.logical(these.data$normalize))
-      tooltip.label <- 'Total Hospitalizations per million:'
-    if(s == 'aggregateDeathCount' & as.logical(these.data$normalize))
-      tooltip.label <- 'Total Deaths per million:'
-    
-    if(length(these.data$sexes) == 1 & length(these.data$ages) == 1) {
-      tooltip.func <- function(dat) {
-        this.list <- unlist(lapply(1:nrow(dat), function(i) paste('County:', dat$county[i], '\n',
-                                                                  'Date:', dat$date[i], '\n',
-                                                                  tooltip.label, as.character(dat[[s]][i]))))
-        return(this.list)
-      }
-      
-      p <- p +
-        geom_line(data = plottable.df,
-                  aes(x = date, 
-                      y = .data[[s]], 
-                      color = county),
-                  size = line.size, 
-                  alpha = 0.3) + 
-        geom_point(data = plottable.df,
-                   aes(x = date, 
-                       y = .data[[s]], 
-                       color = county,
-                       fill = county,
-                       text = tooltip.func(plottable.df)),
-                   size = point.size, 
-                   alpha = 0.6) + 
-        xlab('') +
-        scale_color_manual(
-          name = NULL,
-          values = local.colors
-        ) +
-        scale_fill_manual(
-          name = NULL,
-          values = local.colors
-        )
-    }
-    
-    if(length(these.data$sexes) > 1 & length(these.data$counties) == 1) {
-      tmp.col <- unlist(these.colors)
-      names(tmp.col) <- NULL
-      tmp.col <- sample(tmp.col, length(these.data$sexes))
-      
-      tooltip.func <- function(dat) {
-        this.list <- unlist(lapply(1:nrow(dat), function(i) paste('County:', these.data$counties[1], '\n', 
-                                                                  'Date:', dat$date[i], '\n',
-                                                                  'Sex:', as.character(dat[['sex']][i]), '\n',
-                                                                  tooltip.label, as.character(dat[[s]][i]))))
-        return(this.list)
-      }
-      
-      p <- p +
-        geom_line(data = plottable.df,
-                  aes(x = date, 
-                      y = .data[[s]], 
-                      color = sex),
-                  size = line.size, 
-                  alpha = 0.3) + 
-        geom_point(data = plottable.df,
-                   aes(x = date, 
-                       y = .data[[s]], 
-                       color = sex,
-                       fill = sex,
-                       text = tooltip.func(plottable.df)),
-                   size = point.size, 
-                   alpha = 0.6) + 
-        xlab('') +
-        scale_fill_manual(name = NULL, values = tmp.col) +
-        scale_color_manual(name = NULL, values = tmp.col)
-    }
-    
-    if(length(these.data$ages) > 1 & length(these.data$counties) == 1) {
-      tmp.col <- unlist(these.colors)
-      names(tmp.col) <- NULL
-      tmp.col <- sample(tmp.col, length(these.data$ages))
-      
-      tooltip.func <- function(dat) {
-        this.list <- unlist(lapply(1:nrow(dat), function(i) paste('County:', these.data$counties[1], '\n', 
-                                                                  'Date:', dat$date[i], '\n',
-                                                                  'Age Range:', as.character(dat[['age_range']][i]), '\n',
-                                                                  tooltip.label, as.character(dat[[s]][i]))))
-        return(this.list)
-      }
-      
-      p <- p +
-        geom_line(data = plottable.df,
-                  aes(x = date, 
-                      y = .data[[s]], 
-                      color = age_range),
-                  size = line.size, 
-                  alpha = 0.3) + 
-        geom_point(data = plottable.df,
-                   aes(x = date, 
-                       y = .data[[s]], 
-                       color = age_range,
-                       fill = age_range,
-                       text = tooltip.func(plottable.df)),
-                   size = point.size, 
-                   alpha = 0.6) + 
-        xlab('') +
-        scale_fill_manual(name = NULL, values = tmp.col) +
-        scale_color_manual(name = NULL, values = tmp.col)
-    }
-    
-    if(as.logical(these.data$exp)) {
-      p <- p + geom_line(data = exp.df,
-                         aes(x = date,
-                             y = y,
-                             group = ds),
-                         color = 'gray50',
-                         alpha = 0.8,
-                         size = line.size * 0.9,
-                         linetype = "dashed") +
-        annotate("text",
-                 x = max(exp.df$date) * 0.85,
-                 y = max(exp.df$y[exp.df$ds == '1 day']) * 1.1,
-                 label = "doubling in day",
-                 size = 5,
-                 hjust = 1,
-                 vjust = 0,
-                 color = 'gray50',
-                 alpha = 1) +
-        annotate("text",
-                 x = max(exp.df$date) * 0.85,
-                 y = max(exp.df$y[exp.df$ds == '2 days']) * 1.1,
-                 label = "doubling in 2 days",
-                 size = 4.5,
-                 hjust = 1,
-                 vjust = -0.25,
-                 color = 'gray50',
-                 alpha = 1) +
-        annotate("text",
-                 x = max(exp.df$date) * 0.88,
-                 y = max(exp.df$y[exp.df$ds == '3 days']) * 1.1,
-                 label = "doubling in 3 days",
-                 size = 4,
-                 hjust = 1,
-                 vjust = -0.25,
-                 color = 'gray50',
-                 alpha = 1) +
-        annotate("text",
-                 x = max(exp.df$date) * 0.88,
-                 y = max(exp.df$y[exp.df$ds == '5 days']) * 1.1,
-                 label = "doubling in 5 days",
-                 size = 3.5,
-                 hjust = 1,
-                 vjust = -0.25,
-                 color = 'gray50',
-                 alpha = 1) +
-        annotate("text",
-                 x = max(exp.df$date) * 0.9,
-                 y = max(exp.df$y[exp.df$ds == '7 days']) * 1.1,
-                 label = "doubling in 7 days",
-                 size = 3,
-                 hjust = 1,
-                 vjust = -0.25,
-                 color = 'gray50',
-                 alpha = 1)
-    }
-    
-    if(length(highlights) > 0) {
-      highlights.df <- local.df[local.df$county %in% highlights, ]
-      p <- p + geom_line(data = highlights.df,
-                         aes(x = date,
-                             y = .data[[s]],
-                             color = county),
-                         size = line.size,
-                         alpha = 0.8) + 
-        geom_point(data = highlights.df,
-                   aes(x = date, 
-                       y = .data[[s]], 
-                       color = county,
                        fill = county,
                        text = tooltip.func(highlights.df)),
                    size = point.size, 
@@ -1164,11 +568,11 @@ server <- function(input, output, session) {
     if(s == 'deathCount')
       this.legend.title <- 'Daily number of COVID-19 deaths'
     if(s == 'aggregateCaseCount')
-      this.legend.title <- 'Total number of COVID-19 cases'
+      this.legend.title <- 'Aggregate number of COVID-19 cases'
     if(s == 'aggregateHospitalizedCount')
-      this.legend.title <- 'Total number of COVID-19 hospitalized'
+      this.legend.title <- 'Aggregate number of COVID-19 hospitalized'
     if(s == 'aggregateDeathCount')
-      this.legend.title <- 'Total number of COVID-19 deaths'
+      this.legend.title <- 'Aggregate number of COVID-19 deaths'
     
     if(s == 'caseCount' & as.logical(these.data$normalize))
       this.legend.title <- 'Daily COVID-19 cases per million'
@@ -1177,11 +581,11 @@ server <- function(input, output, session) {
     if(s == 'deathCount' & as.logical(these.data$normalize))
       this.legend.title <- 'Daily COVID-19 deaths per million'
     if(s == 'aggregateCaseCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Total COVID-19 cases per million'
+      this.legend.title <- 'Aggregate COVID-19 cases per million'
     if(s == 'aggregateHospitalizedCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Total COVID-19 hospitalizations per million'
+      this.legend.title <- 'Aggregate COVID-19 hospitalizations per million'
     if(s == 'aggregateDeathCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'Total COVID-19 deaths per million'
+      this.legend.title <- 'Aggregate COVID-19 deaths per million'
     
     p <- p + ylab(this.legend.title)
     
@@ -1326,7 +730,8 @@ server <- function(input, output, session) {
                             num_align = input$num_align,
                             exponentials = input$exponentials,
                             normalize = input$normalize,
-                            prisoners = input$prisoners)
+                            prisoners = input$prisoners,
+                            smooth = input$smooth)
   }) %>% debounce(1500)})
   
   shuffleColors <- isolate({eventReactive(input$shuffle_colors, {
@@ -1389,31 +794,17 @@ server <- function(input, output, session) {
       )
     }
     
-    output$casesPlotPNG <- renderPlot({
+    output$casesPlot <- renderPlot({
       this.validate()
-      renderCasesPNG(input.settings, colors.list)
-    })
-    
-    output$casesPlotSVG <- renderGirafe({
-      this.validate()
-      girafe(ggobj = renderCasesSVG(input.settings, colors.list),
-             width_svg = 20,
-             height_svg = 20 * 5 / 7,
-             options = list(opts_selection(type = "single", only_shiny = FALSE)))
-    })
-    output$mapPlot <- renderGirafe({
-      this.validate()
-      girafe(ggobj = renderMap(input.settings),
-             width_svg = 20,
-             height_svg = 20 * 5 / 7,
-             options = list(opts_selection(type = "single", only_shiny = FALSE)))
+      renderTimeSeries(input.settings, colors.list)
     })
     
     output$casesPlotly <- renderPlotly({
       this.validate()
       
-      gg.p <- ggplotly(renderCasesPlotly(input.settings, 
-                                         colors.list),
+      gg.p <- ggplotly(renderTimeSeries(input.settings, 
+                                        colors.list, 
+                                        plotly.settings = T),
                        height = 1200 * 5 / 7,
                        tooltip = c('text')) %>%
         layout(font = list(family = 'Arial'),
@@ -1426,6 +817,15 @@ server <- function(input, output, session) {
       
       return(gg.p)
     })
+    
+    output$mapPlot <- renderGirafe({
+      this.validate()
+      girafe(ggobj = renderMap(input.settings),
+             width_svg = 20,
+             height_svg = 20 * 5 / 7,
+             options = list(opts_selection(type = "single", only_shiny = FALSE)))
+    })
+    
   }
   
   observe({
