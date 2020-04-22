@@ -241,7 +241,7 @@ server <- function(input, output, session) {
       group_by(county, sex, age_range) %>%
       select(c(date, all_of(s))) %>% 
       arrange(date) %>%
-      mutate(!!s := rollmeanr(.data[[s]], as.numeric(input.settings$smooth), fill = NA))
+      mutate(!!s := round(rollmeanr(.data[[s]], as.numeric(input.settings$smooth), fill = NA)))
       
     # generate alignment of data and create exponential growth guides
     if(as.logical(these.data$align)) {
