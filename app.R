@@ -7,13 +7,22 @@
 #    http://shiny.rstudio.com/
 #
 
-packs.to.load <- c('shiny', 'shinyjs', 'shinyWidgets', 
-                   'plotly', 'tidyverse', 'lubridate', 
-                   'cowplot', 'lemon', 'colorspace', 'scales',
-                   'shinycssloaders', 'sf', 'albersusa', 'hues',
-                   'zoo', 'ggiraph')
-
-sapply(packs.to.load, require, character.only = TRUE)
+library('shiny')
+library('shinyjs')
+library('shinyWidgets') 
+library('plotly')
+library('tidyverse')
+library('lubridate')
+library('cowplot')
+library('lemon')
+library('colorspace')
+library('scales')
+library('shinycssloaders')
+library('sf')
+library('albersusa')
+library('hues')
+library('zoo')
+library('ggiraph')
 
 set.seed(5)
 options(spinner.color="#3e5fff")
