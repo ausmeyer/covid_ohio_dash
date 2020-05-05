@@ -10,6 +10,8 @@
 library('shiny')
 library('shinyjs')
 library('shinyWidgets') 
+library('shinydashboard')
+library('shinythemes')
 library('plotly')
 library('tidyverse')
 library('lubridate')
@@ -25,7 +27,7 @@ library('zoo')
 library('ggiraph')
 
 set.seed(5)
-options(spinner.color="#3e5fff")
+options(spinner.color="#6699cc")
 suppressWarnings(load('data.rda'))
 suppressWarnings(load('prison.rda'))
 
@@ -44,6 +46,10 @@ all.series <- list('Daily Cases' = 'caseCount',
                    'Aggregate Hospitalizations' = 'aggregateHospitalizedCount',
                    'Aggregate Deaths' = 'aggregateDeathCount')
 
+map.series <- list('Daily Cases' = 'caseCount', 
+                   'Daily Hospitalizations' = 'hospitalizedCount',
+                   'Daily Deaths' = 'deathCount')
+
 all.transformations <- list('Linear' = 'none', 
                             'Log10' = 'log10')
 
@@ -58,178 +64,364 @@ doubling_time <- function(N0, d0, ts) {
 }
 
 # Define UI for application that draws a histogram
-ui <- fluidPage(
+ui <- bootstrapPage(
   tags$head(includeHTML(("google-analytics.html"))),
   useShinyjs(),
   
-  # Application title
-  titlePanel("Ohio COVID-19 Dashboard"),
-  
-  # Sidebar with a slider input for number of bins 
-  sidebarLayout(
-    sidebarPanel(width = 4,
-                 div(style = 'margin-top: -15px; margin-bottom: -5px',
-                     fluidRow(
-                       column(12,
-                              pickerInput("countyChoice", 
-                                          h4("Included Counties"), 
-                                          options = list(`actions-box` = TRUE),
-                                          multiple = TRUE,
-                                          choices = all.choices,
-                                          selected = all.choices[-1]
-                              )
-                       ),
-                       column(12,
-                              pickerInput("highlightSet", 
-                                          h4("Highlighted Counties"), 
-                                          options = list(`actions-box` = TRUE),
-                                          multiple = TRUE,
-                                          choices = all.choices,
-                                          selected = NULL)
-                       )
-                     ),
-                     fluidRow(
-                       column(6,
-                              pickerInput("seriesChoice", 
-                                          h4("Data"), 
-                                          choices = all.series,
-                                          selected = all.series[4])),
-                       column(6,
-                              pickerInput("transformation", 
-                                          h4("y-axis"), 
-                                          choices = all.transformations,
-                                          selected = all.transformations[1])
-                       )
-                     ),
-                     fluidRow(
-                       column(12,
-                              radioButtons("normalize", 
-                                           h4("Normalize by Population"), 
-                                           choices = list('Yes' = T, 'No' = F),
-                                           selected = list('No' = F)
-                              )
-                       )
-                     ),
-                     fluidRow(
-                       column(12,
-                              pickerInput("ageRange", 
-                                          h4("Ages"), 
-                                          options = list(`actions-box` = TRUE),
-                                          multiple = TRUE,
-                                          choices = all.ages,
-                                          selected = 'Total')
-                       )
-                     ),
-                     fluidRow(
-                       column(12,
-                              pickerInput("sex", 
-                                          h4("Sex"), 
-                                          options = list(`actions-box` = TRUE),
-                                          multiple = TRUE,
-                                          choices = all.sexes,
-                                          selected = 'Total')
-                       )
-                     ),
-                     fluidRow(
-                       column(12,
-                              numericInput("smooth", 
-                                           h5("Smooth over Window (Days)"), 
-                                           value = 1)
-                       )
-                     ),
-                     fluidRow(
-                       column(12,
-                              radioButtons("prisoners", 
-                                           h5("Remove Prisoners (Map only)"), 
-                                           choices = list('Yes' = T, 'No' = F),
-                                           selected = list('No' = F)
-                              )
-                       )
-                     ),
-                     fluidRow(
-                       column(6,
-                              radioButtons("align", 
-                                           h4("Align"), 
-                                           choices = list('Yes' = T, 'No' = F),
-                                           selected = list('No' = F)
-                              )
-                       ),
-                       column(6,
-                              radioButtons("exponentials", 
-                                           h4("Guide"), 
-                                           choices = list('Yes' = T, 'No' = F),
-                                           selected = list('No' = F)
-                              )
-                       )
-                     ),
-                     fluidRow(
-                       column(12,
-                              numericInput("num_align", 
-                                           h4("Align on Number"), 
-                                           value = 0)
-                       )
-                     ),
-                     fluidRow(
-                       align = 'center',
-                       column(12,
-                              actionButton('shuffle_colors',
-                                           'Shuffle Colors'),
-                       )
-                     )
-                 )
-    ),
-    
-    # Show a plot of the generated distribution
-    mainPanel(width = 8,
-              tabsetPanel(type = "tabs",
-                          tabPanel("Basic Plot", plotOutput("casesPlot", height = 1200 * 5 / 7) %>% withSpinner()),
-                          tabPanel('Interactive Plot', plotlyOutput('casesPlotly') %>% withSpinner()),
-                          tabPanel("Map", girafeOutput("mapPlot") %>% withSpinner())
-              )
-    )
-  ),
-  hr(),
-  
-  strong("Explanation:"),
-  
-  "Charts will build automatically 1.5 seconds after changing any parameter. 
-        The Counties menu provides selection of counties of interest. 
-        The Highlights menu allows hightlighting particular counties on top of the selected counties.
-        The Data menu provides a selection of that available from the Ohio Department of Health; the data will also display on the map.
-        The y-axis menu allows selection of a transformation; the transformation will also affect the map.
-        The Ages menu provides selection of particular ages ranges, but to avoid confusion can only be used if only one county and sex is selected.
-        The Sex menu provides selection of particular sexes, but to avoid confusion can only be used if only one county and age is selected.
-        The Align option will align all of the counties selected to the first day that had at least the 'Align on Number' number of the selected Data.
-        The Guide option will overlay place a doubling time guide; it can only be selected if y-axis is Log10 and the data is Aligned.
-        For the Map, if 'Total' is included for ages or sex, the map will only use Total. If any other combination of ages or sexes is picked, it will sum the categories selected.
-        Due to lack of time series data, removing the prison population is only available on the map. Removing prisoners requires sex and age be set to 'Total' only. 
-        At this time, only prisoner Total Cases and Total Deaths can be removed. Removing prisoners assumes the counts have been applied to the county where the prison is located.
-    "
-  
-  ,
-  
-  br(),br(),
-  
-  "Complaints/Suggestions Department: ",
-  a("@austingmeyer", href="https://twitter.com/austingmeyer"),
-  
-  br(),
-  
-  "Data from: ",
-  a("https://coronavirus.ohio.gov/wps/portal/gov/covid-19/home/dashboard", href="https://coronavirus.ohio.gov/wps/portal/gov/covid-19/home/dashboard"),
-  
-  br(),
-  
-  "My very ugly code available at: ",
-  a("https://github.com/ausmeyer/covid_ohio_dash", href="https://github.com/ausmeyer/covid_ohio_dash"),
-  
-  br(),br()
+  navbarPage(theme = shinytheme("yeti"), 
+             collapsible = TRUE,
+             "Ohio COVID-19 tracker", id="nav",
+             # Sidebar with a slider input for number of bins 
+             tabPanel("Basic Plot", 
+                      sidebarPanel(width = 4,
+                                   div(style = 'margin-top: -15px; margin-bottom: -5px',
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("countyChoice1", 
+                                                            h4("Included Counties"), 
+                                                            options = list(`actions-box` = TRUE),
+                                                            multiple = TRUE,
+                                                            choices = all.choices,
+                                                            selected = all.choices[-1]
+                                                )
+                                         ),
+                                         column(12,
+                                                pickerInput("highlightSet1", 
+                                                            h4("Highlighted Counties"), 
+                                                            options = list(`actions-box` = TRUE),
+                                                            multiple = TRUE,
+                                                            choices = all.choices,
+                                                            selected = NULL)
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("seriesChoice1", 
+                                                            h4("Data"), 
+                                                            choices = all.series,
+                                                            selected = all.series[4]))),
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("transformation1", 
+                                                            h4("y-axis"), 
+                                                            choices = all.transformations,
+                                                            selected = all.transformations[1])
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                radioButtons("normalize1", 
+                                                             h4("Normalize by Population"), 
+                                                             choices = list('Yes' = T, 'No' = F),
+                                                             selected = list('No' = F)
+                                                )
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("ageRange1", 
+                                                            h4("Ages"), 
+                                                            options = list(`actions-box` = TRUE),
+                                                            multiple = TRUE,
+                                                            choices = all.ages,
+                                                            selected = 'Total')
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("sex1", 
+                                                            h4("Sex"), 
+                                                            options = list(`actions-box` = TRUE),
+                                                            multiple = TRUE,
+                                                            choices = all.sexes,
+                                                            selected = 'Total')
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                numericInput("smooth1", 
+                                                             h5("Smooth over Window (Days)"), 
+                                                             value = 1)
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(6,
+                                                radioButtons("align1", 
+                                                             h4("Align"), 
+                                                             choices = list('Yes' = T, 'No' = F),
+                                                             selected = list('No' = F)
+                                                )
+                                         ),
+                                         column(6,
+                                                radioButtons("exponentials1", 
+                                                             h4("Guide"), 
+                                                             choices = list('Yes' = T, 'No' = F),
+                                                             selected = list('No' = F)
+                                                )
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                numericInput("num_align1", 
+                                                             h4("Align on Number"), 
+                                                             value = 0)
+                                         )
+                                       ),
+                                       fluidRow(
+                                         align = 'center',
+                                         column(12,
+                                                actionButton('shuffle_colors1',
+                                                             'Shuffle Colors'),
+                                         )
+                                       )
+                                   )
+                      ),
+                      mainPanel(width = 8, plotOutput("casesPlot", height = 1200 * 5 / 7) %>% withSpinner())
+             ),
+             tabPanel('Interactive Plot', 
+                      sidebarPanel(width = 4,
+                                   div(style = 'margin-top: -15px; margin-bottom: -5px',
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("countyChoice2", 
+                                                            h4("Included Counties"), 
+                                                            options = list(`actions-box` = TRUE),
+                                                            multiple = TRUE,
+                                                            choices = all.choices,
+                                                            selected = all.choices[-1]
+                                                )
+                                         ),
+                                         column(12,
+                                                pickerInput("highlightSet2", 
+                                                            h4("Highlighted Counties"), 
+                                                            options = list(`actions-box` = TRUE),
+                                                            multiple = TRUE,
+                                                            choices = all.choices,
+                                                            selected = NULL)
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("seriesChoice2", 
+                                                            h4("Data"), 
+                                                            choices = all.series,
+                                                            selected = all.series[4]))),
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("transformation2", 
+                                                            h4("y-axis"), 
+                                                            choices = all.transformations,
+                                                            selected = all.transformations[1])
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                radioButtons("normalize2", 
+                                                             h4("Normalize by Population"), 
+                                                             choices = list('Yes' = T, 'No' = F),
+                                                             selected = list('No' = F)
+                                                )
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("ageRange2", 
+                                                            h4("Ages"), 
+                                                            options = list(`actions-box` = TRUE),
+                                                            multiple = TRUE,
+                                                            choices = all.ages,
+                                                            selected = 'Total')
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("sex2", 
+                                                            h4("Sex"), 
+                                                            options = list(`actions-box` = TRUE),
+                                                            multiple = TRUE,
+                                                            choices = all.sexes,
+                                                            selected = 'Total')
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                numericInput("smooth2", 
+                                                             h5("Smooth over Window (Days)"), 
+                                                             value = 1)
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(6,
+                                                radioButtons("align2", 
+                                                             h4("Align"), 
+                                                             choices = list('Yes' = T, 'No' = F),
+                                                             selected = list('No' = F)
+                                                )
+                                         ),
+                                         column(6,
+                                                radioButtons("exponentials2", 
+                                                             h4("Guide"), 
+                                                             choices = list('Yes' = T, 'No' = F),
+                                                             selected = list('No' = F)
+                                                )
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                numericInput("num_align2", 
+                                                             h4("Align on Number"), 
+                                                             value = 0)
+                                         )
+                                       ),
+                                       fluidRow(
+                                         align = 'center',
+                                         column(12,
+                                                actionButton('shuffle_colors2',
+                                                             'Shuffle Colors'),
+                                         )
+                                       )
+                                   )
+                      ),
+                      mainPanel(width = 8, plotlyOutput('casesPlotly') %>% withSpinner())
+             ),
+             tabPanel("Map", 
+                      sidebarPanel(width = 4,
+                                   div(style = 'margin-top: -15px; margin-bottom: -5px',
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("seriesChoice3", 
+                                                            h4("Data"), 
+                                                            choices = map.series,
+                                                            selected = map.series[1]))),
+                                       fluidRow(
+                                         column(12,
+                                                numericInput("smooth3", 
+                                                             h5("Sum over Last # Days (default is all)"), 
+                                                             value = length(unique(ohio.df$date)))
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("transformation3", 
+                                                            h4("Transformation"), 
+                                                            choices = all.transformations,
+                                                            selected = all.transformations[1])
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                radioButtons("normalize3", 
+                                                             h4("Normalize by Population"), 
+                                                             choices = list('Yes' = T, 'No' = F),
+                                                             selected = list('No' = F)
+                                                )
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("ageRange3", 
+                                                            h4("Ages"), 
+                                                            options = list(`actions-box` = TRUE),
+                                                            multiple = TRUE,
+                                                            choices = all.ages,
+                                                            selected = 'Total')
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                pickerInput("sex3", 
+                                                            h4("Sex"), 
+                                                            options = list(`actions-box` = TRUE),
+                                                            multiple = TRUE,
+                                                            choices = all.sexes,
+                                                            selected = 'Total')
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                radioButtons("prisoners3", 
+                                                             h5("Remove Prisoners (Map only)"), 
+                                                             choices = list('Yes' = T, 'No' = F),
+                                                             selected = list('No' = F)
+                                                )
+                                         )
+                                       )
+                                   )
+                      ),
+                      mainPanel(width = 8, girafeOutput("mapPlot") %>% withSpinner())
+             ),
+             tabPanel("About",
+                      
+                      h4("Explanation of site functionality"),
+                      
+                      tags$ul(
+                        tags$li("Charts will build automatically 1.5 seconds after changing any parameter."),
+                        tags$li("The Counties menu provides selection of counties of interest."),
+                        tags$li("The Highlights menu allows hightlighting particular counties on top of the selected counties."),
+                        tags$li("The Data menu provides a selection of that available from the Ohio Department of Health; the data will also display on the map."),
+                        tags$li("The y-axis menu allows selection of a transformation; the transformation will also affect the map."),
+                        tags$li("The Ages menu provides selection of particular ages ranges, but to avoid confusion can only be used if only one county and sex is selected."),
+                        tags$li("The Sex menu provides selection of particular sexes, but to avoid confusion can only be used if only one county and age is selected."),
+                        tags$li("The Align option will align all of the counties selected to the first day that had at least the 'Align on Number' number of the selected Data."),
+                        tags$li("The Guide option will overlay place a doubling time guide; it can only be selected if y-axis is Log10 and the data is Aligned."),
+                        tags$li("For the Map, if 'Total' is included for ages or sex, the map will only use Total. If any other combination of ages or sexes is picked, it will sum the categories selected."),
+                        tags$li("Due to lack of time series data, removing the prison population is only available on the map. Removing prisoners requires sex and age be set to 'Total' only."),
+                        tags$li("At this time, only prisoner Total Cases and Total Deaths can be removed. Removing prisoners assumes the counts have been applied to the county where the prison is located."),
+                      ),
+                      
+                      br(),
+                      
+                      h4("Complaints/Suggestions Department:"),
+                      a("@austingmeyer", href="https://twitter.com/austingmeyer"),
+                      
+                      br(),
+                      
+                      h4("Data"), 
+                      a("https://coronavirus.ohio.gov/wps/portal/gov/covid-19/home/dashboard", href="https://coronavirus.ohio.gov/wps/portal/gov/covid-19/home/dashboard"),
+                      
+                      br(),
+                      
+                      h4("Very ugly code"), 
+                      a("https://github.com/ausmeyer/covid_ohio_dash", href="https://github.com/ausmeyer/covid_ohio_dash")
+             )
+  )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output, session) {
   
   renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
+
+    if(plotly.settings) {
+      these.data <- list(
+        counties = these.data$counties2,
+        highlights = these.data$highlights2,
+        series = these.data$series2,
+        transformation = these.data$transformation2,
+        ages = these.data$ages2,
+        sexes = these.data$sexes2,
+        align = these.data$align2,
+        num_align = these.data$num_align2,
+        exponentials = these.data$exponentials2,
+        normalize = these.data$normalize2,
+        smooth = these.data$smooth2
+      )
+    }
+    else{
+      these.data <- list(
+        counties = these.data$counties1,
+        highlights = these.data$highlights1,
+        series = these.data$series1,
+        transformation = these.data$transformation1,
+        ages = these.data$ages1,
+        sexes = these.data$sexes1,
+        align = these.data$align1,
+        num_align = these.data$num_align1,
+        exponentials = these.data$exponentials1,
+        normalize = these.data$normalize1,
+        smooth = these.data$smooth1
+      )
+    }
     
     s <- these.data$series
     
@@ -250,8 +442,8 @@ server <- function(input, output, session) {
       group_by(county, sex, age_range) %>%
       select(c(date, all_of(s))) %>% 
       arrange(date) %>%
-      mutate(!!s := round(rollmeanr(.data[[s]], as.numeric(input.settings$smooth), fill = NA)))
-      
+      mutate(!!s := round(rollmeanr(.data[[s]], as.numeric(these.data$smooth), fill = NA)))
+
     # generate alignment of data and create exponential growth guides
     if(as.logical(these.data$align)) {
       
@@ -513,7 +705,7 @@ server <- function(input, output, session) {
         this.size <- 4
         this.increment <- 0.25
       }
-        
+      
       p <- p + geom_line(data = exp.df,
                          aes(x = date,
                              y = y,
@@ -625,33 +817,30 @@ server <- function(input, output, session) {
     cty_sf <- counties_sf("longlat")
     ohio_sf <- cty_sf[cty_sf$state == 'Ohio', ]
     
-    s <- these.data$series
-    if(s == 'caseCount' | s == 'aggregateCaseCount')
-      s <- 'caseCount'
-    if(s == 'hospitalizedCount' | s == 'aggregateHospitalizedCount')
-      s <- 'hospitalizedCount'
-    if(s == 'deathCount' | s == 'aggregateDeathCount')
-      s <- 'deathCount'
+    s <- these.data$map.series3
     
-    if(as.logical(these.data$normalize)) {
-      local.df <- normalized.df[normalized.df$sex %in% these.data$sexes & normalized.df$age_range %in% these.data$ages, ]
+    if(as.logical(these.data$normalize3)) {
+      local.df <- normalized.df[normalized.df$sex %in% these.data$sexes3 & normalized.df$age_range %in% these.data$ages3, ]
       this.prison_summary <- normalized_prison_summary
     }
     else {
-      local.df <- ohio.df[ohio.df$sex %in% these.data$sexes & ohio.df$age_range %in% these.data$ages, ]
+      local.df <- ohio.df[ohio.df$sex %in% these.data$sexes3 & ohio.df$age_range %in% these.data$ages3, ]
       this.prison_summary <- prison_summary
     }
     
-    if('Total' %in% these.data$ages)
+    if('Total' %in% these.data$ages3)
       local.df <- local.df[local.df$age_range == 'Total', ]
-    if('Total' %in% these.data$sexes)
+    if('Total' %in% these.data$sexes3)
       local.df <- local.df[local.df$sex == 'Total', ]
     
     ohio.summary.df <- local.df %>% 
       group_by(county) %>% 
-      summarise(caseCount = sum(caseCount), deathCount = sum(deathCount), hospitalizedCount = sum(hospitalizedCount))
+      filter(date > max(date) - these.data$map.smooth3) %>%
+      summarise(caseCount = sum(caseCount), 
+                deathCount = sum(deathCount), 
+                hospitalizedCount = sum(hospitalizedCount))
     
-    if(as.logical(these.data$prisoners)) {
+    if(as.logical(these.data$prisoners3)) {
       tmp.df <- ohio.summary.df[na.omit(match(this.prison_summary$county, ohio.summary.df$county)), ]
       tmp.df$caseCount <- tmp.df$caseCount - this.prison_summary$caseCount
       tmp.df$deathCount <- tmp.df$deathCount - this.prison_summary$deathCount
@@ -664,33 +853,31 @@ server <- function(input, output, session) {
     ohio_sf <- bind_cols(ohio_sf, todays.ohio.df)
     ohio_sf$mid <- ohio_sf$geometry
     
-    if(s == 'caseCount')
+    if(s == 'caseCount') {
       this.legend.title <- 'Number of COVID-19 cases'
-    if(s == 'hospitalizedCount')
-      this.legend.title <- 'Number of COVID-19 hospitalized'
-    if(s == 'deathCount')
-      this.legend.title <- 'Number of COVID-19 deaths'
-    
-    if(s == 'caseCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'COVID-19 cases per million'
-    if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'COVID-19 hospitalizations per million'
-    if(s == 'deathCount' & as.logical(these.data$normalize))
-      this.legend.title <- 'COVID-19 deaths per million'
-    
-    if(s == 'caseCount')
       tooltip.label <- 'Cases:'
-    if(s == 'hospitalizedCount')
+    }
+    if(s == 'hospitalizedCount') {
+      this.legend.title <- 'Number of COVID-19 hospitalized'
       tooltip.label <- 'Hospitalizations:'
-    if(s == 'deathCount')
+    }
+    if(s == 'deathCount') {
+      this.legend.title <- 'Number of COVID-19 deaths'
       tooltip.label <- 'Deaths:'
+    }
     
-    if(s == 'caseCount' & as.logical(these.data$normalize))
+    if(s == 'caseCount' & as.logical(these.data$normalize3)) {
+      this.legend.title <- 'COVID-19 cases per million'
       tooltip.label <- 'Cases per million:'
-    if(s == 'hospitalizedCount' & as.logical(these.data$normalize))
+    }
+    if(s == 'hospitalizedCount' & as.logical(these.data$normalize3)) {
+      this.legend.title <- 'COVID-19 hospitalizations per million'
       tooltip.label <- 'Hospitalizations per million:'
-    if(s == 'deathCount' & as.logical(these.data$normalize))
+    }
+    if(s == 'deathCount' & as.logical(these.data$normalize3)) {
+      this.legend.title <- 'COVID-19 deaths per million'
       tooltip.label <- 'Deaths per million:'
+    }
     
     tooltip.func <- function(dat) {
       this.list <- unlist(lapply(1:nrow(dat), function(i) paste('County:', dat$name[i], '\n', 
@@ -714,7 +901,7 @@ server <- function(input, output, session) {
       ) +
       labs(fill = this.legend.title)
     
-    if(these.data$transformation == 'none')
+    if(these.data$transformation3 == 'none')
       p <- p +
       scale_fill_continuous_sequential(
         palette = "Blues",
@@ -729,7 +916,7 @@ server <- function(input, output, session) {
         )
       )
     
-    if(these.data$transformation == 'log10')
+    if(these.data$transformation3 == 'log10')
       p <- p +
       scale_fill_continuous_sequential(
         trans = 'log10',
@@ -749,21 +936,45 @@ server <- function(input, output, session) {
   }
   
   inputData <- isolate({reactive({
-    input.settings <<- list(counties = input$countyChoice,
-                            highlights = input$highlightSet,
-                            series = input$seriesChoice,
-                            transformation = input$transformation,
-                            ages = input$ageRange,
-                            sexes = input$sex,
-                            align = input$align,
-                            num_align = input$num_align,
-                            exponentials = input$exponentials,
-                            normalize = input$normalize,
-                            prisoners = input$prisoners,
-                            smooth = input$smooth)
+    input.settings$map.series3 <<- input$seriesChoice3
+    input.settings$transformation3 <<- input$transformation3
+    input.settings$ages3 <<- input$ageRange3
+    input.settings$sexes3 <<- input$sex3
+    input.settings$normalize3 <<- input$normalize3
+    input.settings$prisoners3 <<- input$prisoners3
+    input.settings$map.smooth3 <<- input$smooth3
+    
+    input.settings$counties2 <<- input$countyChoice2
+    input.settings$highlights2 <<- input$highlightSet2
+    input.settings$series2 <<- input$seriesChoice2
+    input.settings$transformation2 <<- input$transformation2
+    input.settings$ages2 <<- input$ageRange2
+    input.settings$sexes2 <<- input$sex2
+    input.settings$align2 <<- input$align2
+    input.settings$num_align2 <<- input$num_align2
+    input.settings$exponentials2 <<- input$exponentials2
+    input.settings$normalize2 <<- input$normalize2
+    input.settings$smooth2 <<- input$smooth2
+    
+    input.settings$counties1 <<- input$countyChoice1
+    input.settings$highlights1 <<- input$highlightSet1
+    input.settings$series1 <<- input$seriesChoice1
+    input.settings$transformation1 <<- input$transformation1
+    input.settings$ages1 <<- input$ageRange1
+    input.settings$sexes1 <<- input$sex1
+    input.settings$align1 <<- input$align1
+    input.settings$num_align1 <<- input$num_align1
+    input.settings$exponentials1 <<- input$exponentials1
+    input.settings$normalize1 <<- input$normalize1
+    input.settings$smooth1 <<- input$smooth1
   }) %>% debounce(1500)})
   
-  shuffleColors <- isolate({eventReactive(input$shuffle_colors, {
+  shuffleColors1 <- isolate({eventReactive(input$shuffle_colors1, {
+    new.cols <<- iwanthue(length(unique(ohio.df$county)), random = T)
+    sapply(1:length(unique(ohio.df$county)), function(x) colors.list[unique(ohio.df$county)[x]] <<- new.cols[x])
+  })})
+  
+  shuffleColors2 <- isolate({eventReactive(input$shuffle_colors2, {
     new.cols <<- iwanthue(length(unique(ohio.df$county)), random = T)
     sapply(1:length(unique(ohio.df$county)), function(x) colors.list[unique(ohio.df$county)[x]] <<- new.cols[x])
   })})
@@ -771,70 +982,108 @@ server <- function(input, output, session) {
   observe({
     inputData()
     
-    if(input.settings$transformation == 'none' | !as.logical(input.settings$align)) {
-      updateRadioButtons(session, "exponentials",
+    if(input.settings$transformation1 == 'none' | !as.logical(input.settings$align1)) {
+      updateRadioButtons(session, "exponentials1",
                          selected = list('No' = F))
     }
     
-    shinyjs::toggleState("exponentials", 
-                         input.settings$transformation == 'log10' & 
-                           input.settings$align == 'TRUE')
+    shinyjs::toggleState("exponentials1", 
+                         input.settings$transformation1 == 'log10' & 
+                           input.settings$align1 == 'TRUE')
     
-    if(!is.null(input.settings$ages) &
-       !is.null(input.settings$sexes)) {
-      if((input.settings$ages != 'Total' | 
-          input.settings$sexes != 'Total') |
-         length(input.settings$ages) > 1 | 
-          length(input.settings$sexes) > 1) {
+    if(input.settings$transformation2 == 'none' | !as.logical(input.settings$align2)) {
+      updateRadioButtons(session, "exponentials2",
+                         selected = list('No' = F))
+    }
+    
+    shinyjs::toggleState("exponentials2", 
+                         input.settings$transformation2 == 'log10' & 
+                           input.settings$align2 == 'TRUE')
+    
+    if(!is.null(input.settings$ages3) &
+       !is.null(input.settings$sexes3)) {
+      if((input.settings$ages3 != 'Total' | 
+          input.settings$sexes3 != 'Total') |
+         length(input.settings$ages3) > 1 | 
+         length(input.settings$sexes3) > 1) {
         
-        updateRadioButtons(session, "prisoners",
+        updateRadioButtons(session, "prisoners3",
                            selected = list('No' = F))
       }
     }
     
-    if(length(input.settings$ages) <= 1 &
-       length(input.settings$sexes) <= 1 &
-       'Total' %in% input.settings$ages & 
-       'Total' %in% input.settings$sexes) {
-      shinyjs::enable('prisoners') } else {
-        shinyjs::disable('prisoners')
+    if(length(input.settings$ages3) <= 1 &
+       length(input.settings$sexes3) <= 1 &
+       'Total' %in% input.settings$ages3 & 
+       'Total' %in% input.settings$sexes3) {
+      shinyjs::enable('prisoners3') } else {
+        shinyjs::disable('prisoners3')
       }
   })
   
   build.plots <- function() {
-    this.validate <- function() {
+    this.validate1 <- function() {
       validate(
-        need(length(input.settings$counties) > 0, 
+        need(length(input.settings$counties1) > 0, 
              "Please select a county set"),
-        need(length(input.settings$ages) > 0, 
+        need(length(input.settings$ages1) > 0, 
              "Please select an age range"),
-        need(length(input.settings$sexes) > 0, 
+        need(length(input.settings$sexes1) > 0, 
              "Please select a sex"),
-        need(all(input.settings$highlights %in% input.settings$counties)  | 
-               length(input.settings$highlights) == 0, 
+        need(all(input.settings$highlights1 %in% input.settings$counties1)  | 
+               length(input.settings$highlights1) == 0, 
              "Please ensure highlights are in counties selected"),
-        need(sum(c(length(input.settings$counties) > 1, 
-                   length(input.settings$ages) > 1,
-                   length(input.settings$sexes) > 1)) <= 1, 
+        need(sum(c(length(input.settings$counties1) > 1, 
+                   length(input.settings$ages1) > 1,
+                   length(input.settings$sexes1) > 1)) <= 1, 
              "Please ensure only one of Counties, Ages, or Sex has more than one item selected"),
-        need(length(input.settings$counties) != length(input.settings$highlights),
+        need(length(input.settings$counties1) != length(input.settings$highlights1),
              "No need to highlight all of the selected counties. Unselect highlights.")
         
       )
     }
     
+    this.validate2 <- function() {
+      validate(
+        need(length(input.settings$counties2) > 0, 
+             "Please select a county set"),
+        need(length(input.settings$ages2) > 0, 
+             "Please select an age range"),
+        need(length(input.settings$sexes2) > 0, 
+             "Please select a sex"),
+        need(all(input.settings$highlights2 %in% input.settings$counties2)  | 
+               length(input.settings$highlights2) == 0, 
+             "Please ensure highlights are in counties selected"),
+        need(sum(c(length(input.settings$counties2) > 1, 
+                   length(input.settings$ages2) > 1,
+                   length(input.settings$sexes2) > 1)) <= 1, 
+             "Please ensure only one of Counties, Ages, or Sex has more than one item selected"),
+        need(length(input.settings$counties2) != length(input.settings$highlights2),
+             "No need to highlight all of the selected counties. Unselect highlights.")
+        
+      )
+    }
+    
+    this.validate3 <- function() {
+      validate(
+        need(length(input.settings$ages3) > 0, 
+             "Please select an age range"),
+        need(length(input.settings$sexes3) > 0, 
+             "Please select a sex")
+      )
+    }
+    
     output$casesPlot <- renderPlot({
-      this.validate()
+      this.validate1()
       renderTimeSeries(input.settings, colors.list)
     })
     
     output$casesPlotly <- renderPlotly({
-      this.validate()
-      
+      this.validate2()
       gg.p <- ggplotly(renderTimeSeries(input.settings, 
                                         colors.list, 
                                         plotly.settings = T),
-                       height = 1200 * 5 / 7,
+                       height = 1100 * 5 / 7,
                        tooltip = c('text')) %>%
         layout(font = list(family = 'Arial'),
                xaxis = list(title = list(standoff = 15, font = list(size = 20)), 
@@ -848,7 +1097,7 @@ server <- function(input, output, session) {
     })
     
     output$mapPlot <- renderGirafe({
-      this.validate()
+      this.validate3()
       girafe(ggobj = renderMap(input.settings),
              width_svg = 20,
              height_svg = 20 * 5 / 7,
@@ -863,7 +1112,12 @@ server <- function(input, output, session) {
   })
   
   observe({
-    shuffleColors()
+    shuffleColors1()
+    build.plots()
+  })
+  
+  observe({
+    shuffleColors2()
     build.plots()
   })
 }
