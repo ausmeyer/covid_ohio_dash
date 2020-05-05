@@ -371,7 +371,7 @@ ui <- bootstrapPage(
                       
                       br(),
                       
-                      h4("Complaints/Suggestions Department:"),
+                      h4("Complaints/Suggestions"),
                       a("@austingmeyer", href="https://twitter.com/austingmeyer"),
                       
                       br(),
