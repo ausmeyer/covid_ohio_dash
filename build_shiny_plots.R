@@ -16,7 +16,11 @@ build.plots <- function(input.settings, output) {
                  length(input.settings$sexes1) > 1)) <= 1, 
            "Please ensure only one of Counties, Ages, or Sex has more than one item selected"),
       need(length(input.settings$counties1) != length(input.settings$highlights1),
-           "No need to highlight all of the selected counties. Unselect highlights.")
+           "No need to highlight all of the selected counties. Unselect highlights."),
+      need((as.logical(input.settings$exponentials1) &  
+        input.settings$series1 %in% c('aggregateCaseCount', 'aggregateHospitalizedCount', 'aggregateDeathCount')) |
+        !(as.logical(input.settings$exponentials1)),
+           "To show guides, the data must be aggegrate rather than daily")
     )
   }
   
@@ -36,8 +40,11 @@ build.plots <- function(input.settings, output) {
                  length(input.settings$sexes2) > 1)) <= 1,
            "Please ensure only one of Counties, Ages, or Sex has more than one item selected"),
       need(length(input.settings$counties2) != length(input.settings$highlights2),
-           "No need to highlight all of the selected counties. Unselect highlights.")
-      
+           "No need to highlight all of the selected counties. Unselect highlights."),
+      need((as.logical(input.settings$exponentials2) &  
+              input.settings$series2 %in% c('aggregateCaseCount', 'aggregateHospitalizedCount', 'aggregateDeathCount')) |
+             !(as.logical(input.settings$exponentials2)),
+           "To show guides, the data must be aggegrate rather than daily")
     )
   }
   
@@ -81,4 +88,5 @@ build.plots <- function(input.settings, output) {
            options = list(opts_selection(type = "single", only_shiny = FALSE)))
   })
   
+  output$dataTable <- renderDataTable({ ohio.df })
 }

@@ -18,9 +18,9 @@ all.series <- list('Daily Cases' = 'caseCount',
                    'Aggregate Hospitalizations' = 'aggregateHospitalizedCount',
                    'Aggregate Deaths' = 'aggregateDeathCount')
 
-map.series <- list('Daily Cases' = 'caseCount', 
-                   'Daily Hospitalizations' = 'hospitalizedCount',
-                   'Daily Deaths' = 'deathCount')
+map.series <- list('Cases' = 'caseCount', 
+                   'Hospitalizations' = 'hospitalizedCount',
+                   'Deaths' = 'deathCount')
 
 all.transformations <- list('Linear' = 'none', 
                             'Log10' = 'log10')

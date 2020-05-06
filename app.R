@@ -13,7 +13,7 @@ ui <- bootstrapPage(
              collapsible = TRUE,
              "Ohio COVID-19 tracker", id="nav",
              # Sidebar with a slider input for number of bins 
-             tabPanel("Basic Plot", 
+             tabPanel("Basic Timeseries", 
                       sidebarPanel(width = 4,
                                    div(style = 'margin-top: -15px; margin-bottom: -5px',
                                        fluidRow(
@@ -119,7 +119,7 @@ ui <- bootstrapPage(
                       ),
                       mainPanel(width = 8, plotOutput("casesPlot", height = 1200 * 5 / 7) %>% withSpinner())
              ),
-             tabPanel('Interactive Plot', 
+             tabPanel('Interactive Timeseries', 
                       sidebarPanel(width = 4,
                                    div(style = 'margin-top: -15px; margin-bottom: -5px',
                                        fluidRow(
@@ -291,6 +291,8 @@ ui <- bootstrapPage(
                       ),
                       mainPanel(width = 8, girafeOutput("mapPlot") %>% withSpinner())
              ),
+             tabPanel("Data",
+                      dataTableOutput("dataTable") %>% withSpinner()),
              tabPanel("About",
                       
                       h4("Explanation of site functionality"),
