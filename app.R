@@ -3,11 +3,13 @@ set.seed(5)
 source('load_libraries.R')
 source('load_settings.R')
 source('accessory_fxn.R')
+source('construct_settings.R')
 
 # Define UI for application that draws a histogram
 ui <- bootstrapPage(
   tags$head(includeHTML(("google-analytics.html"))),
   useShinyjs(),
+  useShinydashboard(),
   
   navbarPage(theme = shinytheme("yeti"), 
              collapsible = TRUE,
@@ -117,7 +119,17 @@ ui <- bootstrapPage(
                                        )
                                    )
                       ),
-                      mainPanel(width = 9, plotOutput("casesPlot", height = 1400 * 5 / 7) %>% withSpinner())
+                      mainPanel(width = 9,
+                                tags$style(".small-box.bg-yellow { background-color: #dbae58 !important; color: #ffffff !important; }"),
+                                tags$style(".small-box.bg-red { background-color: #ae3c31 !important; color: #ffffff !important; }"),
+                                tags$style(".small-box.bg-purple { background-color: #484848 !important; color: #ffffff !important; }"),
+                                fluidRow(
+                                  valueBoxOutput("casesBox1"),
+                                  valueBoxOutput("hospBox1"),
+                                  valueBoxOutput("deathBox1")
+                                ),
+                                br(),
+                                plotOutput("casesPlot", height = 1300 * 5 / 7) %>% withSpinner())
              ),
              tabPanel('Interactive Timeseries', 
                       sidebarPanel(width = 3,
@@ -223,7 +235,17 @@ ui <- bootstrapPage(
                                        )
                                    )
                       ),
-                      mainPanel(width = 9, plotlyOutput('casesPlotly') %>% withSpinner())
+                      mainPanel(width = 9,
+                                tags$style(".small-box.bg-yellow { background-color: #dbae58 !important; color: #ffffff !important; }"),
+                                tags$style(".small-box.bg-red { background-color: #ae3c31 !important; color: #ffffff !important; }"),
+                                tags$style(".small-box.bg-purple { background-color: #484848 !important; color: #ffffff !important; }"),
+                                fluidRow(
+                                  valueBoxOutput("casesBox2"),
+                                  valueBoxOutput("hospBox2"),
+                                  valueBoxOutput("deathBox2")
+                                ),
+                                br(),
+                                plotlyOutput('casesPlotly') %>% withSpinner())
              ),
              tabPanel("Map", 
                       sidebarPanel(width = 3,
@@ -345,6 +367,7 @@ server <- function(input, output, session) {
   
   source('render_timeseries.R')
   source('render_map.R')
+  source('render_value_boxes.R')
   source('build_shiny_plots.R')
   
   inputData <- isolate({reactive({

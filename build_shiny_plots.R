@@ -88,6 +88,14 @@ build.plots <- function(input.settings, input, output) {
            options = list(opts_selection(type = "single", only_shiny = FALSE)))
   })
   
+  output$casesBox1 <- renderValueBox({ renderValueBoxCases(input.settings, plotly.settings = F) })
+  output$hospBox1 <- renderValueBox({ renderValueBoxHosp(input.settings, plotly.settings = F) })
+  output$deathBox1 <- renderValueBox({ renderValueBoxDeaths(input.settings, plotly.settings = F) })
+  
+  output$casesBox2 <- renderValueBox({ renderValueBoxCases(input.settings, plotly.settings = T) })
+  output$hospBox2 <- renderValueBox({ renderValueBoxHosp(input.settings, plotly.settings = T) })
+  output$deathBox2 <- renderValueBox({ renderValueBoxDeaths(input.settings, plotly.settings = T) })
+  
   output$dataTable <- renderDataTable({ 
     if(input.settings$normalize4 == 'raw')
       return(datatable(ohio.df, filter = "top", 
