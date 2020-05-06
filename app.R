@@ -331,17 +331,19 @@ ui <- bootstrapPage(
                       
                       tags$ul(
                         tags$li("Charts will build automatically 1.5 seconds after changing any parameter."),
+                        tags$li("The yellow, red, and gray dashboard panels will show the aggregate number of cases, hospitalizations, and deaths of the selected data on the current day."),
                         tags$li("The Counties menu provides selection of counties of interest."),
                         tags$li("The Highlights menu allows hightlighting particular counties on top of the selected counties."),
-                        tags$li("The Data menu provides a selection of that available from the Ohio Department of Health; the data will also display on the map."),
-                        tags$li("The y-axis menu allows selection of a transformation; the transformation will also affect the map."),
-                        tags$li("The Ages menu provides selection of particular ages ranges, but to avoid confusion can only be used if only one county and sex is selected."),
-                        tags$li("The Sex menu provides selection of particular sexes, but to avoid confusion can only be used if only one county and age is selected."),
-                        tags$li("The Align option will align all of the counties selected to the first day that had at least the 'Align on Number' number of the selected Data."),
-                        tags$li("The Guide option will overlay place a doubling time guide; it can only be selected if y-axis is Log10 and the data is Aligned."),
+                        tags$li("The Data menu provides the values available from the Ohio Dept. of Health (ODH)."),
+                        tags$li("The y-axis menu allows selection of a transformation; the transformation is also available on the map."),
+                        tags$li("The Ages menu provides selection of ages ranges. To avoid confusion, multiple ages can only be used if only one county and sex is selected."),
+                        tags$li("The Sex menu provides selection of sexes from ODH. To avoid confusion, multiple sexes can only be used if only one county and age is selected."),
+                        tags$li("The Align option will align all of the counties selected to the first day that had at least the 'Align on Number' number of the selected values."),
+                        tags$li("The Guide option will overlay a doubling time guide; it can only be selected if y-axis is Log10 and the data is Aligned."),
                         tags$li("For the Map, if 'Total' is included for ages or sex, the map will only use Total. If any other combination of ages or sexes is picked, it will sum the categories selected."),
                         tags$li("Due to lack of time series data, removing the prison population is only available on the map. Removing prisoners requires sex and age be set to 'Total' only."),
                         tags$li("At this time, only prisoner Total Cases and Total Deaths can be removed. Removing prisoners assumes the counts have been applied to the county where the prison is located."),
+                        tags$li("The Data tab allows filtering the data used in this dashboard and downloading the filtered dataset. The data is originally from ODH, but includes calculated age, sex, and county totals as well as values normalized by population that is not included in the ODH data.")
                       ),
                       
                       br(),

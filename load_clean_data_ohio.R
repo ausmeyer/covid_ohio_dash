@@ -7,7 +7,8 @@ calc.totals <- function(this.df) {
     summarise(county = 'Total',  
               caseCount = sum(caseCount), 
               deathCount = sum(deathCount), 
-              hospitalizedCount = sum(hospitalizedCount))
+              hospitalizedCount = sum(hospitalizedCount)) %>%
+    ungroup() 
   
   this.df <- bind_rows(this.df, aggregate.df)
   
@@ -17,33 +18,37 @@ calc.totals <- function(this.df) {
               age_range = 'Total', 
               caseCount = sum(caseCount), 
               deathCount = sum(deathCount), 
-              hospitalizedCount = sum(hospitalizedCount))
+              hospitalizedCount = sum(hospitalizedCount)) %>%
+    ungroup()
   
   aggregate.df.2 <- this.df %>% 
     group_by(county, date, sex) %>% 
     summarise(age_range = 'Total', 
               caseCount = sum(caseCount), 
               deathCount = sum(deathCount), 
-              hospitalizedCount = sum(hospitalizedCount))
+              hospitalizedCount = sum(hospitalizedCount)) %>%
+    ungroup()
   
   aggregate.df.3 <- this.df %>% 
     group_by(county, date, age_range) %>% 
     summarise(sex = 'Total', 
               caseCount = sum(caseCount), 
               deathCount = sum(deathCount), 
-              hospitalizedCount = sum(hospitalizedCount))
+              hospitalizedCount = sum(hospitalizedCount)) %>%
+    ungroup()
   
   this.df <- bind_rows(this.df, aggregate.df.1, aggregate.df.2, aggregate.df.3)
   
   this.df <- this.df %>% group_by(county, sex, age_range) %>% 
     mutate(aggregateCaseCount = cumsum(caseCount), 
            aggregateDeathCount = cumsum(deathCount), 
-           aggregateHospitalizedCount = cumsum(hospitalizedCount))
+           aggregateHospitalizedCount = cumsum(hospitalizedCount)) %>%
+    ungroup()
   
   return(this.df)
 }
 
-load('population.Rda')
+load('population.rda')
 
 ohio.df <- read_csv('https://coronavirus.ohio.gov/static/COVIDSummaryData.csv')
 
@@ -60,7 +65,8 @@ ohio.df <- ohio.df %>%
   ungroup() %>%
   select(-c(death_date, admission_date)) %>%
   replace(is.na(.), 0) %>%
-  rename(date = onset_date)
+  rename(date = onset_date) %>%
+  ungroup()
 
 ohio.df <- calc.totals(ohio.df)
 
@@ -69,29 +75,15 @@ normalized.df <- ohio.df[ohio.df$sex %in% unique(population$sex) &
 
 normalized.df <- normalized.df %>% 
   group_by(county, sex, age_range, date) %>%
-  mutate(caseCount = round(caseCount * 1000000 / 
-                             population$pop[population$sex == .data$sex & 
-                                              population$age_range == .data$age_range & 
-                                              population$county == .data$county]),
-         deathCount = round(deathCount * 1000000 / 
-                              population$pop[population$sex == .data$sex & 
-                                               population$age_range == .data$age_range & 
-                                               population$county == .data$county]),
-         hospitalizedCount = round(hospitalizedCount * 1000000 / 
-                                     population$pop[population$sex == .data$sex & 
-                                                      population$age_range == .data$age_range & 
-                                                      population$county == .data$county]),
-         aggregateCaseCount = round(aggregateCaseCount * 1000000 / 
-                                      population$pop[population$sex == .data$sex & 
-                                                       population$age_range == .data$age_range & 
-                                                       population$county == .data$county]),
-         aggregateDeathCount = round(aggregateDeathCount * 1000000 / 
-                                       population$pop[population$sex == .data$sex & 
-                                                        population$age_range == .data$age_range & 
-                                                        population$county == .data$county]),
-         aggregateHospitalizedCount = round(aggregateHospitalizedCount * 1000000 / 
-                                              population$pop[population$sex == .data$sex & 
-                                                               population$age_range == .data$age_range & 
-                                                               population$county == .data$county]))
+  mutate(population = population$pop[population$sex == .data$sex & 
+                                       population$age_range == .data$age_range & 
+                                       population$county == .data$county]) %>%
+  mutate(caseCount = round(caseCount * 1000000 / population),
+         deathCount = round(deathCount * 1000000 / population),
+         hospitalizedCount = round(hospitalizedCount * 1000000 / population),
+         aggregateCaseCount = round(aggregateCaseCount * 1000000 / population),
+         aggregateDeathCount = round(aggregateDeathCount * 1000000 / population),
+         aggregateHospitalizedCount = round(aggregateHospitalizedCount * 1000000 / population)) %>%
+  ungroup()
 
 save(ohio.df, normalized.df, file = 'data.rda')
