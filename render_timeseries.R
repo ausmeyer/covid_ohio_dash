@@ -116,16 +116,16 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
   p <- ggplot()
   
   # define base sizes
-  base.size <- 14
+  base.size <- 16
   point.size <- 3.5
   line.size <- 1.5
-  font.size <- 16
+  font.size <- 18
   
   # change sizes for plotly
   if(plotly.settings) {
     base.size <- 12
     point.size <- 2.0
-    line.size <- 1.0
+    line.size <- 0.8
     font.size <- 13
   }
   
@@ -208,7 +208,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
       ) +
       guides(
         color = guide_legend(
-          nrow = ceiling(length(unique(local.df$county)) / 5),
+          nrow = ceiling(length(unique(local.df$county)) / 6),
           override.aes = list(
             linetype = c(rep(0, length(unique(local.df$county)))),
             shape = c(rep(21, length(unique(local.df$county))))

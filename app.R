@@ -117,7 +117,7 @@ ui <- bootstrapPage(
                                        )
                                    )
                       ),
-                      mainPanel(width = 9, plotOutput("casesPlot", height = 1200 * 5 / 7) %>% withSpinner())
+                      mainPanel(width = 9, plotOutput("casesPlot", height = 1400 * 5 / 7) %>% withSpinner())
              ),
              tabPanel('Interactive Timeseries', 
                       sidebarPanel(width = 3,

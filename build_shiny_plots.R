@@ -67,14 +67,14 @@ build.plots <- function(input.settings, input, output) {
     gg.p <- ggplotly(renderTimeSeries(input.settings, 
                                       colors.list, 
                                       plotly.settings = T),
-                     height = 1100 * 5 / 7,
+                     height = 1200 * 5 / 7,
                      tooltip = c('text')) %>%
       layout(font = list(family = 'Arial'),
-             xaxis = list(title = list(standoff = 15, font = list(size = 20)), 
-                          tickfont = list(size = 20),
+             xaxis = list(title = list(standoff = 15, font = list(size = 18)), 
+                          tickfont = list(size = 16),
                           automargin = T),
-             yaxis = list(title = list(standoff = 15, font = list(size = 20)), 
-                          tickfont = list(size = 20),
+             yaxis = list(title = list(standoff = 15, font = list(size = 18)), 
+                          tickfont = list(size = 16),
                           automargin = T))
     
     return(gg.p)
