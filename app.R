@@ -14,7 +14,7 @@ ui <- bootstrapPage(
              "Ohio COVID-19 tracker", id="nav",
              # Sidebar with a slider input for number of bins 
              tabPanel("Basic Timeseries", 
-                      sidebarPanel(width = 4,
+                      sidebarPanel(width = 3,
                                    div(style = 'margin-top: -15px; margin-bottom: -5px',
                                        fluidRow(
                                          column(12,
@@ -117,10 +117,10 @@ ui <- bootstrapPage(
                                        )
                                    )
                       ),
-                      mainPanel(width = 8, plotOutput("casesPlot", height = 1200 * 5 / 7) %>% withSpinner())
+                      mainPanel(width = 9, plotOutput("casesPlot", height = 1200 * 5 / 7) %>% withSpinner())
              ),
              tabPanel('Interactive Timeseries', 
-                      sidebarPanel(width = 4,
+                      sidebarPanel(width = 3,
                                    div(style = 'margin-top: -15px; margin-bottom: -5px',
                                        fluidRow(
                                          column(12,
@@ -223,10 +223,10 @@ ui <- bootstrapPage(
                                        )
                                    )
                       ),
-                      mainPanel(width = 8, plotlyOutput('casesPlotly') %>% withSpinner())
+                      mainPanel(width = 9, plotlyOutput('casesPlotly') %>% withSpinner())
              ),
              tabPanel("Map", 
-                      sidebarPanel(width = 4,
+                      sidebarPanel(width = 3,
                                    div(style = 'margin-top: -15px; margin-bottom: -5px',
                                        fluidRow(
                                          column(12,
@@ -289,18 +289,20 @@ ui <- bootstrapPage(
                                        )
                                    )
                       ),
-                      mainPanel(width = 8, girafeOutput("mapPlot") %>% withSpinner())
+                      mainPanel(width = 9, girafeOutput("mapPlot") %>% withSpinner())
              ),
              tabPanel("Data",
                       mainPanel(width = 12,
-                                dataTableOutput("dataTable"),
                                 pickerInput("normalize4", 
                                             h4("Dataset"), 
-                                            choices = list('Raw counts' = 'raw', 
-                                                           'Normalized by population' = 'normalized'),
+                                            choices = list('Raw Counts' = 'raw', 
+                                                           'Normalized by Population' = 'normalized'),
                                             selected = list('Raw counts' = 'raw')
                                 ),
-                                downloadButton("downloadData", "Download") %>% withSpinner())),
+                                downloadButton("downloadData", "Download"),
+                                br(),br(),
+                                h4("Data Table"),
+                                dataTableOutput("dataTable") %>% withSpinner())),
              tabPanel("About",
                       
                       h4("Explanation of site functionality"),
@@ -432,17 +434,17 @@ server <- function(input, output, session) {
   
   observe({
     input.settings <- inputData()
-    build.plots(input.settings, output)
+    build.plots(input.settings, input, output)
   })
   
   observe({
     shuffleColors1()
-    build.plots(input.settings = inputData(), output)
+    build.plots(input.settings = inputData(), input, output)
   })
   
   observe({
     shuffleColors2()
-    build.plots(input.settings = inputData(), output)
+    build.plots(input.settings = inputData(), input, output)
   })
 }
 

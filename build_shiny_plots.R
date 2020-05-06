@@ -1,4 +1,4 @@
-build.plots <- function(input.settings, output) {
+build.plots <- function(input.settings, input, output) {
   
   this.validate1 <- function(input.settings) {
     validate(
@@ -90,24 +90,30 @@ build.plots <- function(input.settings, output) {
   
   output$dataTable <- renderDataTable({ 
     if(input.settings$normalize4 == 'raw')
-      return(ohio.df)
+      return(datatable(ohio.df, filter = "top", 
+                       selection = "multiple", 
+                       escape = FALSE, 
+                       options = list(dom = 'lrtip')))
     else if(input.settings$normalize4 == 'normalized')
-      return(normalized.df)
+      return(datatable(normalized.df, filter = "top", 
+                       selection = "multiple", 
+                       escape = FALSE, 
+                       options = list(dom = 'lrtip')))
   })
   
   output$downloadData <- downloadHandler(
     filename = function() {
       if(input.settings$normalize4 == 'raw')
-        paste("data-raw", Sys.Date(), ".csv", sep="")
+        paste("data-raw-", Sys.Date(), ".csv", sep="")
       else if(input.settings$normalize4 == 'normalized')
-        paste("data-normalized", Sys.Date(), ".csv", sep="")
+        paste("data-normalized-", Sys.Date(), ".csv", sep="")
     },
     
     content = function(file) {
       if(input.settings$normalize4 == 'raw')
-        write.csv(ohio.df, file, row.names = FALSE)
+        write.csv(ohio.df[input[["dataTable_rows_all"]], ], file, row.names = FALSE)
       else if(input.settings$normalize4 == 'normalized')
-        write.csv(normalized.df, file, row.names = FALSE)
+        write.csv(normalized.df[input[["dataTable_rows_all"]], ], file, row.names = FALSE)
     }
   )
 }
