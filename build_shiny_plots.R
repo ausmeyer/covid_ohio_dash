@@ -18,8 +18,8 @@ build.plots <- function(input.settings, output) {
       need(length(input.settings$counties1) != length(input.settings$highlights1),
            "No need to highlight all of the selected counties. Unselect highlights."),
       need((as.logical(input.settings$exponentials1) &  
-        input.settings$series1 %in% c('aggregateCaseCount', 'aggregateHospitalizedCount', 'aggregateDeathCount')) |
-        !(as.logical(input.settings$exponentials1)),
+              input.settings$series1 %in% c('aggregateCaseCount', 'aggregateHospitalizedCount', 'aggregateDeathCount')) |
+             !(as.logical(input.settings$exponentials1)),
            "To show guides, the data must be aggegrate rather than daily")
     )
   }
@@ -88,5 +88,26 @@ build.plots <- function(input.settings, output) {
            options = list(opts_selection(type = "single", only_shiny = FALSE)))
   })
   
-  output$dataTable <- renderDataTable({ ohio.df })
+  output$dataTable <- renderDataTable({ 
+    if(input.settings$normalize4 == 'raw')
+      return(ohio.df)
+    else if(input.settings$normalize4 == 'normalized')
+      return(normalized.df)
+  })
+  
+  output$downloadData <- downloadHandler(
+    filename = function() {
+      if(input.settings$normalize4 == 'raw')
+        paste("data-raw", Sys.Date(), ".csv", sep="")
+      else if(input.settings$normalize4 == 'normalized')
+        paste("data-normalized", Sys.Date(), ".csv", sep="")
+    },
+    
+    content = function(file) {
+      if(input.settings$normalize4 == 'raw')
+        write.csv(ohio.df, file, row.names = FALSE)
+      else if(input.settings$normalize4 == 'normalized')
+        write.csv(normalized.df, file, row.names = FALSE)
+    }
+  )
 }

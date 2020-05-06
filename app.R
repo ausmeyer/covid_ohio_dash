@@ -292,7 +292,15 @@ ui <- bootstrapPage(
                       mainPanel(width = 8, girafeOutput("mapPlot") %>% withSpinner())
              ),
              tabPanel("Data",
-                      dataTableOutput("dataTable") %>% withSpinner()),
+                      mainPanel(width = 12,
+                                dataTableOutput("dataTable"),
+                                pickerInput("normalize4", 
+                                            h4("Dataset"), 
+                                            choices = list('Raw counts' = 'raw', 
+                                                           'Normalized by population' = 'normalized'),
+                                            selected = list('Raw counts' = 'raw')
+                                ),
+                                downloadButton("downloadData", "Download") %>% withSpinner())),
              tabPanel("About",
                       
                       h4("Explanation of site functionality"),
@@ -338,7 +346,8 @@ server <- function(input, output, session) {
   source('build_shiny_plots.R')
   
   inputData <- isolate({reactive({
-    list(map.series3 = input$seriesChoice3,
+    list(normalize4 = input$normalize4,
+         map.series3 = input$seriesChoice3,
          transformation3 = input$transformation3,
          ages3 = input$ageRange3,
          sexes3 = input$sex3,
