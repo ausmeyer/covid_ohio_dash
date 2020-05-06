@@ -93,11 +93,13 @@ build.plots <- function(input.settings, input, output) {
       return(datatable(ohio.df, filter = "top", 
                        selection = "multiple", 
                        escape = FALSE, 
+                       caseInsensitive = FALSE,
                        options = list(dom = 'lrtip')))
     else if(input.settings$normalize4 == 'normalized')
       return(datatable(normalized.df, filter = "top", 
                        selection = "multiple", 
                        escape = FALSE, 
+                       caseInsensitive = FALSE,
                        options = list(dom = 'lrtip')))
   })
   
