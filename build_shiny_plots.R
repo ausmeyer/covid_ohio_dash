@@ -93,14 +93,12 @@ build.plots <- function(input.settings, input, output) {
       return(datatable(ohio.df, filter = "top", 
                        selection = "multiple", 
                        escape = FALSE, 
-                       caseInsensitive = FALSE,
-                       options = list(dom = 'lrtip')))
+                       options = list(search = list(caseInsensitive = FALSE), dom = 'lrtip')))
     else if(input.settings$normalize4 == 'normalized')
       return(datatable(normalized.df, filter = "top", 
                        selection = "multiple", 
                        escape = FALSE, 
-                       caseInsensitive = FALSE,
-                       options = list(dom = 'lrtip')))
+                       options = list(search = list(caseInsensitive = FALSE), dom = 'lrtip')))
   })
   
   output$downloadData <- downloadHandler(
