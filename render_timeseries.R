@@ -307,7 +307,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     this.increment <- 0.5
     
     if(plotly.settings) {
-      this.max.x.add <- as.numeric(max(exp.df$date) - min(exp.df$date)) * 0.09
+      this.max.x.add <- as.numeric(max(exp.df$date) - min(exp.df$date)) * 0.07
       this.max.y.multi <- 1.01
       this.size <- 4
       this.increment <- 0.25
