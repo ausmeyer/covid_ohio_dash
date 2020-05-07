@@ -33,7 +33,8 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
   if(these.data$num_align > 0 | as.logical(these.data$exp)) {
     start_dates <- local.df %>%
       group_by(county) %>%
-      summarise(start_date = min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE)) %>%
+      summarise(start_date = max(c(min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE),
+                                 min(date, na.rm = TRUE) + these.data$pushtime[1] - 1))) %>%
       ungroup()
     
     local.df.exp <- local.df %>%
@@ -155,7 +156,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     p <- p + theme(legend.position = 'none')
   
   # make spare data sets to gray out point not in select time frame
-  if(these.data$num_align == 0){
+  if(these.data$num_align == 0 & !as.logical(these.data$drop)){
     s.1 <- spare.df %>% filter(date < (min(date) + these.data$pushtime[1]))
     s.2 <- spare.df %>% filter(date >= (min(date) + these.data$pushtime[2] - 1))
     
