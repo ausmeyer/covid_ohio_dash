@@ -355,14 +355,15 @@ ui <- bootstrapPage(
                       
                       tags$ul(
                         tags$li("Charts will build automatically 1.5 seconds after changing any parameter."),
-                        tags$li("The yellow, red, and gray dashboard panels will show the aggregate number of cases, hospitalizations, and deaths of the selected data on the current day."),
-                        tags$li("The Counties menu provides selection of counties of interest."),
-                        tags$li("The Highlights menu allows hightlighting particular counties on top of the selected counties."),
+                        tags$li("The yellow, red, and gray dashboard panels will show the aggregate number of cases, hospitalizations, and deaths of the included counties (even if they are not 'hightlighted') with selected ages/sexes/normalization on the current day."),
+                        tags$li("The Counties menu provides for selection of counties of interest."),
+                        tags$li("The Highlights menu allows hightlighting particular counties on the time series plot on top of the selected counties."),
                         tags$li("The Data menu provides the values available from the Ohio Dept. of Health (ODH)."),
                         tags$li("The y-axis menu allows selection of a transformation; the transformation is also available on the map."),
                         tags$li("The Ages menu provides selection of ages ranges. To avoid confusion, multiple ages can only be used if only one county and sex is selected."),
                         tags$li("The Sex menu provides selection of sexes from ODH. To avoid confusion, multiple sexes can only be used if only one county and age is selected."),
                         tags$li("The 'Align on Number of Data' number of the selected data set (ie Cases, Hospitalizations or Deaths)."),
+                        tags$li("The Select Time Frame option will narrow the range of displayed and analyzed data. If the data is already aligned, it doesn't really make sense to narrow the range from the beginning so I would only consider narrowing from the end when the data is already aligned, but it is up to you."),
                         tags$li("The Guide option will overlay a doubling time guide; I strongly recommended using it only after aligning the data to facilitate interpretation."),
                         tags$li("For the Map, if 'Total' is included for ages or sex, the map will only use Total. If any other combination of ages or sexes is picked, it will sum the categories selected."),
                         tags$li("Due to lack of time series data, removing the prison population is only available on the map. Removing prisoners requires sex and age be set to 'Total' only."),

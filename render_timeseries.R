@@ -366,6 +366,10 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                  alpha = 0.6)
   }
   
+  if(these.data$num_align > 0) {
+    p <- p + xlab('Days since alignment number passed')
+  }
+  
   if(s == 'caseCount')
     this.legend.title <- 'Daily number of COVID-19 cases'
   if(s == 'hospitalizedCount')
