@@ -11,7 +11,8 @@ constructSettings <- function(these.data, plotly.settings) {
       num_align = these.data$num_align2,
       exponentials = these.data$exponentials2,
       normalize = these.data$normalize2,
-      smooth = these.data$smooth2
+      smooth = these.data$smooth2,
+      pushtime = these.data$pushtime2
     )
   }
   else{
@@ -26,7 +27,8 @@ constructSettings <- function(these.data, plotly.settings) {
       num_align = these.data$num_align1,
       exponentials = these.data$exponentials1,
       normalize = these.data$normalize1,
-      smooth = these.data$smooth1
+      smooth = these.data$smooth1,
+      pushtime = these.data$pushtime1
     )
   }
   return(these.data)

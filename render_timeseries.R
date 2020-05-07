@@ -8,11 +8,11 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
   
   # pick local data to use from and normalization options
   if(as.logical(these.data$normalize)) {
-    local.df <- normalized.df[normalized.df$county %in% these.data$counties, ]
+    local.df <- normalized.df %>% filter(county %in% these.data$counties)
     this.prison_summary <- normalized_prison_summary
   }
   else {
-    local.df <- ohio.df[ohio.df$county %in% these.data$counties, ]
+    local.df <- ohio.df %>% filter(county %in% these.data$counties)
     this.prison_summary <- prison_summary
   }
   
@@ -26,26 +26,34 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
   
   # generate alignment of data and create exponential growth guides
   if(as.logical(these.data$align)) {
-    
     start_dates <- local.df %>%
+      filter(date >= (min(date) + these.data$pushtime[1] - 1)) %>%
       group_by(county) %>%
       summarise(start_date = min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE)) %>%
       ungroup()
     
-    if(nrow(start_dates) > 1)
-      local.df <- local.df[order(local.df$county), ][unlist(sapply(1:nrow(start_dates), 
-                                                                   function(x) 
-                                                                     local.df$date[local.df$county == start_dates$county[x]] >= start_dates$start_date[x])), ]
     
-    doubling.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
+    local.df.guide <- local.df %>%
+      arrange(-desc(county)) %>%
+      group_by(county) %>%
+      mutate(start = start_dates$start_date[start_dates$county == county[1]]) %>%
+      ungroup() %>%
+      filter(date >= start,
+             date < (min(date) + these.data$pushtime[2]))
+    
+    doubling.df <- local.df.guide %>%
+      filter(sex %in% these.data$sexes,
+             age_range %in% these.data$ages)
     
     if(length(highlights) > 0)
-      doubling.df <- doubling.df[doubling.df$county %in% highlights, ]
+      doubling.df <- doubling.df %>% filter(county %in% highlights)
     
-    if(nrow(start_dates) > 1)
-      minimums <- doubling.df[order(doubling.df$county), ][unlist(lapply(1:nrow(start_dates), 
-                                                                         function(x) 
-                                                                           doubling.df$date[doubling.df$county == start_dates$county[x]] == start_dates$start_date[x])), ]
+    minimums <- doubling.df %>%
+      arrange(-desc(county)) %>%
+      group_by(county) %>%
+      mutate(start = start_dates$start_date[start_dates$county == county[1]]) %>%
+      ungroup() %>%
+      filter(date == start)
     
     if(as.logical(these.data$exp)) {
       low <- min(minimums[[s]])
@@ -68,13 +76,8 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                               rep('5 days', length(date_seq)),
                               rep('7 days', length(date_seq))))
       
-      exp.df$date <- exp.df$date - min(doubling.df$date)
+      exp.df$date <- exp.df$date
     }
-    
-    local.df <- local.df %>% 
-      group_by(county) %>% 
-      mutate(date = date - min(date)) %>%
-      ungroup()
   }
   
   # get only the requested set of data for local use
@@ -284,7 +287,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     this.increment <- 0.5
     
     if(plotly.settings) {
-      this.max.x <- max(exp.df$date) * 0.9
+      this.max.x <- max(exp.df$date) - as.numeric(max(exp.df$date) - min(exp.df$date)) * 0.1
       this.max.y.multi <- 1.2
       this.size <- 4
       this.increment <- 0.25
@@ -299,7 +302,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                        size = line.size * 0.9,
                        linetype = "dashed") +
       annotate("text",
-               x = this.max.x * 0.99,
+               x = this.max.x,
                y = this.max.y.multi * max(exp.df$y[exp.df$ds == '1 day']),
                label = "doubling in day",
                size = this.size,

@@ -111,6 +111,15 @@ ui <- bootstrapPage(
                                          )
                                        ),
                                        fluidRow(
+                                         column(12,
+                                                sliderInput("pushtime1", 
+                                                            h4("Select Time Frame"), 
+                                                            min = 1,
+                                                            max = length(unique(ohio.df$date)),
+                                                            value = c(1, length(unique(ohio.df$date))))
+                                         )
+                                       ),
+                                       fluidRow(
                                          align = 'center',
                                          column(12,
                                                 actionButton('shuffle_colors1',
@@ -233,6 +242,15 @@ ui <- bootstrapPage(
                                                 numericInput("num_align2", 
                                                              h4("Align on Number"), 
                                                              value = 0)
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                sliderInput("pushtime2", 
+                                                            h4("Select Time Frame"), 
+                                                            min = 1,
+                                                            max = length(unique(ohio.df$date)),
+                                                            value = c(1, length(unique(ohio.df$date))))
                                          )
                                        ),
                                        fluidRow(
@@ -412,6 +430,7 @@ server <- function(input, output, session) {
          exponentials2 = input$exponentials2,
          normalize2 = input$normalize2,
          smooth2 = input$smooth2,
+         pushtime2 = input$pushtime2,
          counties1 = input$countyChoice1,
          highlights1 = input$highlightSet1,
          series1 = input$seriesChoice1,
@@ -422,7 +441,8 @@ server <- function(input, output, session) {
          num_align1 = input$num_align1,
          exponentials1 = input$exponentials1,
          normalize1 = input$normalize1,
-         smooth1 = input$smooth1)
+         smooth1 = input$smooth1,
+         pushtime1 = input$pushtime1)
   }) %>% debounce(1500)})
   
   shuffleColors1 <- isolate({eventReactive(input$shuffle_colors1, {

@@ -15,7 +15,9 @@ calculateValueBoxData <- function(these.data, local.series, plotly.settings) {
   local.df <- local.df %>% 
     filter(county %in% these.data$counties,
            sex %in% these.data$sexes,
-           age_range %in% these.data$ages)
+           age_range %in% these.data$ages,
+           date >= min(date) + these.data$pushtime[1] - 1,
+           date < min(date) + these.data$pushtime[2])
   
   if(as.logical(these.data$normalize)) {
     local.df <- local.df %>% 
