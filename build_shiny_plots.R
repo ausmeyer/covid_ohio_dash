@@ -20,7 +20,10 @@ build.plots <- function(input.settings, input, output) {
       need((as.logical(input.settings$exponentials1) &  
               input.settings$series1 %in% c('aggregateCaseCount', 'aggregateHospitalizedCount', 'aggregateDeathCount')) |
              !(as.logical(input.settings$exponentials1)),
-           "To show guides, the data must be aggegrate rather than daily")
+           "To show guides, the data must be aggegrate rather than daily"),
+      need((input.settings$pushtime1[2] == length(unique(ohio.df$date)) & input.settings$pushtime1[1] == 1) |
+             input.settings$num_align1 == 0,
+           "It is too complicated to select the time frame and align on a number at the same time.")
     )
   }
   
@@ -44,8 +47,11 @@ build.plots <- function(input.settings, input, output) {
       need((as.logical(input.settings$exponentials2) &  
               input.settings$series2 %in% c('aggregateCaseCount', 'aggregateHospitalizedCount', 'aggregateDeathCount')) |
              !(as.logical(input.settings$exponentials2)),
-           "To show guides, the data must be aggegrate rather than daily")
-    )
+           "To show guides, the data must be aggegrate rather than daily"),
+      need((input.settings$pushtime2[2] == length(unique(ohio.df$date)) & input.settings$pushtime2[1] == 1) |
+             input.settings$num_align2 == 0,
+           "It is too complicated to select the time frame and align on a number at the same time.")
+      )
   }
   
   this.validate3 <- function(input.settings) {

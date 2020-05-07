@@ -32,7 +32,6 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
   # find starting location for alignments or exponentials
   if(these.data$num_align > 0 | as.logical(these.data$exp)) {
     start_dates <- local.df %>%
-      filter(date >= (min(date) + these.data$pushtime[1] - 1)) %>%
       group_by(county) %>%
       summarise(start_date = min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE)) %>%
       ungroup()
@@ -41,20 +40,13 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
       arrange(-desc(county)) %>%
       group_by(county) %>%
       mutate(start = start_dates$start_date[start_dates$county == county[1]]) %>%
-      ungroup() %>%
-      filter(date >= start,
-             date < (min(date) + these.data$pushtime[2]))
-    
-    spare.df <- local.df %>%
-      arrange(-desc(county)) %>%
-      group_by(county) %>%
-      mutate(start = start_dates$start_date[start_dates$county == county[1]]) %>%
-      ungroup() %>%
-      filter(date >= (min(date) + these.data$pushtime[2] - 1))
-    
+      ungroup()
+
     doubling.df <- local.df.exp %>%
-      filter(sex %in% these.data$sexes,
-             age_range %in% these.data$ages)
+      filter(date >= start &
+               date < (min(date, na.rm = TRUE) + these.data$pushtime[2]) &
+               sex %in% these.data$sexes &
+               age_range %in% these.data$ages)
     
     if(length(highlights) > 0)
       doubling.df <- doubling.df %>% filter(county %in% highlights)
@@ -93,6 +85,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
   # cap the exponential growth guides at the maximum for the current y-values
   if(these.data$num_align > 0) {
     local.df <- local.df.exp %>%
+      filter(date >= start) %>%
       group_by(county) %>%
       mutate(date = date - min(date)) %>%
       ungroup()
@@ -110,8 +103,8 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                date >= (min(date) + these.data$pushtime[2] - 1))
     
     local.df <- local.df %>%
-      filter(date >= (min(date) + these.data$pushtime[1] - 1),
-             date < (min(date) + these.data$pushtime[2]))
+      filter(date >= (min(date) + these.data$pushtime[1] - 1) &
+               date < (min(date) + these.data$pushtime[2]))
     
     if(as.logical(these.data$exp)) {
       exp.df <- exp.df %>%
@@ -162,43 +155,44 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     p <- p + theme(legend.position = 'none')
   
   # make spare data sets to gray out point not in select time frame
-  s.1 <- spare.df %>% filter(date < (min(date) + these.data$pushtime[1]))
-  s.2 <- spare.df %>% filter(date >= (min(date) + these.data$pushtime[2] - 1))
-  
-  # plot spare data
-  p <- p + geom_line(data = s.1,
-                     aes(x = date,
-                         y = .data[[s]],
-                         group = county),
-                     color = "#DEDEDE",
-                     fill = "#DEDEDE",
-                     size = line.size,
-                     alpha = 0.4) +
-    geom_point(data = s.1 %>% filter(date < max(date)),
-               aes(x = date,
-                   y = .data[[s]],
-                   group = county),
-               color = "#DEDEDE",
-               fill = "#DEDEDE",
-               size = point.size,
-               alpha = 0.4)
-  
-  p <- p + geom_line(data = s.2,
-                     aes(x = date,
-                         y = .data[[s]],
-                         group = county),
-                     color = "#DEDEDE",
-                     fill = "#DEDEDE",
-                     size = line.size,
-                     alpha = 0.4) +
-    geom_point(data = s.2 %>% filter(date > min(date)),
-               aes(x = date,
-                   y = .data[[s]],
-                   group = county),
-               color = "#DEDEDE",
-               fill = "#DEDEDE",
-               size = point.size,
-               alpha = 0.4)
+  if(these.data$num_align == 0){
+    s.1 <- spare.df %>% filter(date < (min(date) + these.data$pushtime[1]))
+    s.2 <- spare.df %>% filter(date >= (min(date) + these.data$pushtime[2] - 1))
+    
+    p <- p + geom_line(data = s.1,
+                       aes(x = date,
+                           y = .data[[s]],
+                           group = county),
+                       color = "#DEDEDE",
+                       fill = "#DEDEDE",
+                       size = line.size,
+                       alpha = 0.4) +
+      geom_point(data = s.1 %>% filter(date < max(date)),
+                 aes(x = date,
+                     y = .data[[s]],
+                     group = county),
+                 color = "#DEDEDE",
+                 fill = "#DEDEDE",
+                 size = point.size,
+                 alpha = 0.4)
+    
+    p <- p + geom_line(data = s.2,
+                       aes(x = date,
+                           y = .data[[s]],
+                           group = county),
+                       color = "#DEDEDE",
+                       fill = "#DEDEDE",
+                       size = line.size,
+                       alpha = 0.4) +
+      geom_point(data = s.2 %>% filter(date > min(date)),
+                 aes(x = date,
+                     y = .data[[s]],
+                     group = county),
+                 color = "#DEDEDE",
+                 fill = "#DEDEDE",
+                 size = point.size,
+                 alpha = 0.4)
+  }
   
   plottable.df <- local.df %>% filter(!(county %in% highlights))
   

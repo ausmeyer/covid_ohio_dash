@@ -105,6 +105,15 @@ ui <- bootstrapPage(
                                        ),
                                        fluidRow(
                                          column(12,
+                                                radioButtons("drop1", 
+                                                             h5("Drop outside of Time Frame"),  
+                                                             choices = list('Yes' = T, 'No' = F),
+                                                             selected = list('No' = F)
+                                                )
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
                                                 radioButtons("exponentials1", 
                                                              h4("Doubling Time Guide"),  
                                                              choices = list('Yes' = T, 'No' = F),
@@ -228,6 +237,15 @@ ui <- bootstrapPage(
                                                             min = 1,
                                                             max = length(unique(ohio.df$date)),
                                                             value = c(1, length(unique(ohio.df$date))))
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                radioButtons("drop2", 
+                                                             h5("Drop Outside of Time Frame"),  
+                                                             choices = list('Yes' = T, 'No' = F),
+                                                             selected = list('No' = F)
+                                                )
                                          )
                                        ),
                                        fluidRow(
@@ -413,6 +431,7 @@ server <- function(input, output, session) {
          ages2 = input$ageRange2,
          sexes2 = input$sex2,
          num_align2 = input$num_align2,
+         drop1 = input$drop1,
          exponentials2 = input$exponentials2,
          normalize2 = input$normalize2,
          smooth2 = input$smooth2,
@@ -424,6 +443,7 @@ server <- function(input, output, session) {
          ages1 = input$ageRange1,
          sexes1 = input$sex1,
          num_align1 = input$num_align1,
+         drop2 = input$drop2,
          exponentials1 = input$exponentials1,
          normalize1 = input$normalize1,
          smooth1 = input$smooth1,
