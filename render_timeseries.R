@@ -25,7 +25,9 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     ungroup()
   
   # get only the requested set of data for local use
-  local.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
+  local.df <- local.df %>%
+    filter(sex %in% these.data$sexes,
+           age_range %in% these.data$ages)
   
   start_dates <- local.df %>%
     filter(date >= (min(date) + these.data$pushtime[1] - 1)) %>%
@@ -90,6 +92,10 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
       exp.df <- exp.df %>%
         mutate(date = date - min(date))
     }
+  } else {
+    local.df <- local.df %>%
+      filter(date >= (min(date) + these.data$pushtime[1] - 1),
+             date < (min(date) + these.data$pushtime[2]))
   }
   
   # get only the local colors
