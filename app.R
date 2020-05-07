@@ -120,16 +120,25 @@ ui <- bootstrapPage(
                                    )
                       ),
                       mainPanel(width = 9,
-                                tags$style(".small-box.bg-yellow { background-color: #dbae58 !important; color: #ffffff !important; }"),
-                                tags$style(".small-box.bg-red { background-color: #ae3c31 !important; color: #ffffff !important; }"),
-                                tags$style(".small-box.bg-purple { background-color: #484848 !important; color: #ffffff !important; }"),
-                                fluidRow(
-                                  valueBoxOutput("casesBox1"),
-                                  valueBoxOutput("hospBox1"),
-                                  valueBoxOutput("deathBox1")
-                                ),
+                                tags$head(tags$style(HTML('.box{-webkit-box-shadow: none; -moz-box-shadow: none;box-shadow: none;}'))),
+                                box(title = "Summary Statistics",
+                                    width = 12,
+                                    solidHeader = T,
+                                    collapsible = T,
+                                    tags$style(".small-box.bg-yellow { background-color: #dbae58 !important; color: #ffffff !important; }"),
+                                    tags$style(".small-box.bg-red { background-color: #ae3c31 !important; color: #ffffff !important; }"),
+                                    tags$style(".small-box.bg-purple { background-color: #484848 !important; color: #ffffff !important; }"),
+                                    fluidRow(
+                                      valueBoxOutput("casesBox1"),
+                                      valueBoxOutput("hospBox1"),
+                                      valueBoxOutput("deathBox1")
+                                    )),
                                 br(),
-                                plotOutput("casesPlot", height = 1300 * 5 / 7) %>% withSpinner())
+                                box(title = "Time Series",
+                                    width = 12,
+                                    solidHeader = T,
+                                    collapsible = T,
+                                    plotOutput("casesPlot", height = 1150 * 5 / 7) %>% withSpinner()))
              ),
              tabPanel('Interactive Timeseries', 
                       sidebarPanel(width = 3,
@@ -236,16 +245,25 @@ ui <- bootstrapPage(
                                    )
                       ),
                       mainPanel(width = 9,
-                                tags$style(".small-box.bg-yellow { background-color: #dbae58 !important; color: #ffffff !important; }"),
-                                tags$style(".small-box.bg-red { background-color: #ae3c31 !important; color: #ffffff !important; }"),
-                                tags$style(".small-box.bg-purple { background-color: #484848 !important; color: #ffffff !important; }"),
-                                fluidRow(
-                                  valueBoxOutput("casesBox2"),
-                                  valueBoxOutput("hospBox2"),
-                                  valueBoxOutput("deathBox2")
-                                ),
+                                tags$head(tags$style(HTML('.box{-webkit-box-shadow: none; -moz-box-shadow: none;box-shadow: none;}'))),
+                                box(title = "Summary Statistics",
+                                    width = 12,
+                                    solidHeader = T,
+                                    collapsible = T,
+                                    tags$style(".small-box.bg-yellow { background-color: #dbae58 !important; color: #ffffff !important; }"),
+                                    tags$style(".small-box.bg-red { background-color: #ae3c31 !important; color: #ffffff !important; }"),
+                                    tags$style(".small-box.bg-purple { background-color: #484848 !important; color: #ffffff !important; }"),
+                                    fluidRow(
+                                      valueBoxOutput("casesBox2"),
+                                      valueBoxOutput("hospBox2"),
+                                      valueBoxOutput("deathBox2")
+                                    )),
                                 br(),
-                                plotlyOutput('casesPlotly') %>% withSpinner())
+                                box(title = "Time Series",
+                                    width = 12,
+                                    solidHeader = T,
+                                    collapsible = T,
+                                    plotlyOutput('casesPlotly') %>% withSpinner()))
              ),
              tabPanel("Map", 
                       sidebarPanel(width = 3,
@@ -258,9 +276,11 @@ ui <- bootstrapPage(
                                                             selected = map.series[1]))),
                                        fluidRow(
                                          column(12,
-                                                numericInput("smooth3", 
-                                                             h5("Sum over Last # Days (default is all)"), 
-                                                             value = length(unique(ohio.df$date)))
+                                                sliderInput("smooth3", 
+                                                            h5("Sum over Days (default is all)"), 
+                                                            min = 1,
+                                                            max = length(unique(ohio.df$date)),
+                                                            value = c(1, length(unique(ohio.df$date))))
                                          )
                                        ),
                                        fluidRow(

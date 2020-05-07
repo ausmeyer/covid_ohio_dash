@@ -1,5 +1,3 @@
-
-
 renderMap <- function(these.data) {
   cty_sf <- counties_sf("longlat")
   ohio_sf <- cty_sf[cty_sf$state == 'Ohio', ]
@@ -22,7 +20,8 @@ renderMap <- function(these.data) {
   
   ohio.summary.df <- local.df %>% 
     group_by(county) %>% 
-    filter(date > max(date) - these.data$map.smooth3) %>%
+    filter(date >= min(date) + these.data$map.smooth3[1] - 1,
+           date < min(date) + these.data$map.smooth3[2]) %>%
     summarise(caseCount = sum(caseCount), 
               deathCount = sum(deathCount), 
               hospitalizedCount = sum(hospitalizedCount)) %>%

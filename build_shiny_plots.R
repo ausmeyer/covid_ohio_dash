@@ -67,7 +67,7 @@ build.plots <- function(input.settings, input, output) {
     gg.p <- ggplotly(renderTimeSeries(input.settings, 
                                       colors.list, 
                                       plotly.settings = T),
-                     height = 1200 * 5 / 7,
+                     height = 1150 * 5 / 7,
                      tooltip = c('text')) %>%
       layout(font = list(family = 'Arial'),
              xaxis = list(title = list(standoff = 15, font = list(size = 18)), 
