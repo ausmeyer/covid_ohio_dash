@@ -25,7 +25,8 @@ renderMap <- function(these.data) {
     filter(date > max(date) - these.data$map.smooth3) %>%
     summarise(caseCount = sum(caseCount), 
               deathCount = sum(deathCount), 
-              hospitalizedCount = sum(hospitalizedCount))
+              hospitalizedCount = sum(hospitalizedCount)) %>%
+    ungroup()
   
   if(as.logical(these.data$prisoners3)) {
     tmp.df <- ohio.summary.df[na.omit(match(this.prison_summary$county, ohio.summary.df$county)), ]

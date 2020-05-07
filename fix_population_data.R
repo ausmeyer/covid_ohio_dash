@@ -4,7 +4,8 @@ calc.totals <- function(this.df) {
   aggregate.df <- this.df %>% 
     group_by(age_range, sex) %>% 
     summarise(county = 'Total',  
-              pop = sum(pop))
+              pop = sum(pop)) %>%
+    ungroup()
   
   this.df <- bind_rows(this.df, aggregate.df)
   
@@ -12,17 +13,20 @@ calc.totals <- function(this.df) {
     group_by(county) %>% 
     summarise(sex = 'Total',
               age_range = 'Total', 
-              pop = sum(pop))
+              pop = sum(pop)) %>%
+    ungroup()
   
   aggregate.df.2 <- this.df %>% 
     group_by(county, sex) %>% 
     summarise(age_range = 'Total', 
-              pop = sum(pop))
+              pop = sum(pop)) %>%
+    ungroup()
   
   aggregate.df.3 <- this.df %>% 
     group_by(county, age_range) %>% 
     summarise(sex = 'Total', 
-              pop = sum(pop))
+              pop = sum(pop)) %>%
+    ungroup()
   
   this.df <- bind_rows(this.df, aggregate.df.1, aggregate.df.2, aggregate.df.3)
   
@@ -83,4 +87,4 @@ population$age_range[population$age_range == '80-'] <- '80+'
 population <- population %>% mutate_if(is.factor, as.character)
 population <- calc.totals(population)
 
-save(population, file = 'population.Rda')
+save(population, file = 'population.rda')

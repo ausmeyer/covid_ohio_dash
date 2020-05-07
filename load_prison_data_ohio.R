@@ -2,7 +2,7 @@ library(tabulizer)
 library(purrr)
 library(tidyverse)
 
-load('population.Rda')
+load('population.rda')
 
 prison_df <- extract_tables('https://coronavirus.ohio.gov/static/DRCCOVID-19Information.pdf')
 
@@ -90,18 +90,21 @@ prison_summary <- prison_df %>%
   filter(county != 'Totals') %>%
   group_by(county) %>% 
   summarise(caseCount = sum(as.numeric(inmates.positive)), 
-            deathCount = sum(as.numeric(inmate.deaths.confirmed)))
+            deathCount = sum(as.numeric(inmate.deaths.confirmed))) %>%
+  ungroup()
 
 population_summary <- population %>% 
   filter(sex != 'Total', age_range != 'Total') %>% 
   group_by(county) %>% 
-  summarise(pop = sum(pop))
+  summarise(pop = sum(pop)) %>%
+  ungroup()
 
 normalized_prison_summary <- prison_summary %>% 
   group_by(county) %>%
   mutate(caseCount = round(caseCount * 1000000 / 
                              population_summary$pop[population_summary$county == .data$county]),
          deathCount = round(deathCount * 1000000 / 
-                              population_summary$pop[population_summary$county == .data$county]))
+                              population_summary$pop[population_summary$county == .data$county])) %>%
+  ungroup()
 
 save(prison_df, prison_summary, normalized_prison_summary, file = 'prison.rda')

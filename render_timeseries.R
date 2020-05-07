@@ -21,14 +21,16 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     group_by(county, sex, age_range) %>%
     select(c(date, all_of(s))) %>% 
     arrange(date) %>%
-    mutate(!!s := round(rollmeanr(.data[[s]], as.numeric(these.data$smooth), fill = NA)))
+    mutate(!!s := round(rollmeanr(.data[[s]], as.numeric(these.data$smooth), fill = NA))) %>%
+    ungroup()
   
   # generate alignment of data and create exponential growth guides
   if(as.logical(these.data$align)) {
     
     start_dates <- local.df %>%
       group_by(county) %>%
-      summarise(start_date = min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE))
+      summarise(start_date = min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE)) %>%
+      ungroup()
     
     if(nrow(start_dates) > 1)
       local.df <- local.df[order(local.df$county), ][unlist(sapply(1:nrow(start_dates), 
@@ -69,7 +71,10 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
       exp.df$date <- exp.df$date - min(doubling.df$date)
     }
     
-    local.df <- local.df %>% group_by(county) %>% mutate(date = date - min(date))
+    local.df <- local.df %>% 
+      group_by(county) %>% 
+      mutate(date = date - min(date)) %>%
+      ungroup()
   }
   
   # get only the requested set of data for local use
