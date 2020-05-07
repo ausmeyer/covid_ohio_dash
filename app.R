@@ -90,7 +90,7 @@ ui <- bootstrapPage(
                                        fluidRow(
                                          column(12,
                                                 numericInput("num_align1", 
-                                                             h5("Align on Number of Cases"), 
+                                                             h5("Align on Number of Data"), 
                                                              value = 0)
                                          )
                                        ),
@@ -217,7 +217,7 @@ ui <- bootstrapPage(
                                        fluidRow(
                                          column(12,
                                                 numericInput("num_align2", 
-                                                             h5("Align on Number of Cases"), 
+                                                             h5("Align on Number of Data"), 
                                                              value = 0)
                                          )
                                        ),
@@ -362,8 +362,8 @@ ui <- bootstrapPage(
                         tags$li("The y-axis menu allows selection of a transformation; the transformation is also available on the map."),
                         tags$li("The Ages menu provides selection of ages ranges. To avoid confusion, multiple ages can only be used if only one county and sex is selected."),
                         tags$li("The Sex menu provides selection of sexes from ODH. To avoid confusion, multiple sexes can only be used if only one county and age is selected."),
-                        tags$li("The Align option will align all of the counties selected to the first day that had at least the 'Align on Number' number of the selected values."),
-                        tags$li("The Guide option will overlay a doubling time guide; it can only be selected if y-axis is Log10 and the data is Aligned."),
+                        tags$li("The 'Align on Number of Data' number of the selected data set (ie Cases, Hospitalizations or Deaths)."),
+                        tags$li("The Guide option will overlay a doubling time guide; I strongly recommended using it only after aligning the data to facilitate interpretation."),
                         tags$li("For the Map, if 'Total' is included for ages or sex, the map will only use Total. If any other combination of ages or sexes is picked, it will sum the categories selected."),
                         tags$li("Due to lack of time series data, removing the prison population is only available on the map. Removing prisoners requires sex and age be set to 'Total' only."),
                         tags$li("At this time, only prisoner Total Cases and Total Deaths can be removed. Removing prisoners assumes the counts have been applied to the county where the prison is located."),
