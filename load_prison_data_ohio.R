@@ -13,7 +13,7 @@ prison_colnames <- c('institution', 'staff.positive', 'staff.deaths',
                      'inmate.deaths.probable', 'inmate.deaths.confirmed', 
                      'inmate.pending.results', 'inmates.recovered')
 
-df_2 <- as.data.frame(prison_df[[2]])[-c(1:15), ] %>%
+df_2 <- as.data.frame(prison_df[[2]])[-c(1:7), ] %>%
   select_if(function(x) !(all(x == ''))) %>%
   as_tibble(., .name_repair = ~ prison_colnames)
 
