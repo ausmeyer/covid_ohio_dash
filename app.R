@@ -88,25 +88,9 @@ ui <- bootstrapPage(
                                          )
                                        ),
                                        fluidRow(
-                                         column(6,
-                                                radioButtons("align1", 
-                                                             h4("Align"), 
-                                                             choices = list('Yes' = T, 'No' = F),
-                                                             selected = list('No' = F)
-                                                )
-                                         ),
-                                         column(6,
-                                                radioButtons("exponentials1", 
-                                                             h4("Guide"), 
-                                                             choices = list('Yes' = T, 'No' = F),
-                                                             selected = list('No' = F)
-                                                )
-                                         )
-                                       ),
-                                       fluidRow(
                                          column(12,
                                                 numericInput("num_align1", 
-                                                             h4("Align on Number"), 
+                                                             h5("Align on Number of Cases"), 
                                                              value = 0)
                                          )
                                        ),
@@ -117,6 +101,15 @@ ui <- bootstrapPage(
                                                             min = 1,
                                                             max = length(unique(ohio.df$date)),
                                                             value = c(1, length(unique(ohio.df$date))))
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                radioButtons("exponentials1", 
+                                                             h4("Doubling Time Guide"),  
+                                                             choices = list('Yes' = T, 'No' = F),
+                                                             selected = list('No' = F)
+                                                )
                                          )
                                        ),
                                        fluidRow(
@@ -222,25 +215,9 @@ ui <- bootstrapPage(
                                          )
                                        ),
                                        fluidRow(
-                                         column(6,
-                                                radioButtons("align2", 
-                                                             h4("Align"), 
-                                                             choices = list('Yes' = T, 'No' = F),
-                                                             selected = list('No' = F)
-                                                )
-                                         ),
-                                         column(6,
-                                                radioButtons("exponentials2", 
-                                                             h4("Guide"), 
-                                                             choices = list('Yes' = T, 'No' = F),
-                                                             selected = list('No' = F)
-                                                )
-                                         )
-                                       ),
-                                       fluidRow(
                                          column(12,
                                                 numericInput("num_align2", 
-                                                             h4("Align on Number"), 
+                                                             h5("Align on Number of Cases"), 
                                                              value = 0)
                                          )
                                        ),
@@ -251,6 +228,15 @@ ui <- bootstrapPage(
                                                             min = 1,
                                                             max = length(unique(ohio.df$date)),
                                                             value = c(1, length(unique(ohio.df$date))))
+                                         )
+                                       ),
+                                       fluidRow(
+                                         column(12,
+                                                radioButtons("exponentials2", 
+                                                             h4("Doubling Time Guide"), 
+                                                             choices = list('Yes' = T, 'No' = F),
+                                                             selected = list('No' = F)
+                                                )
                                          )
                                        ),
                                        fluidRow(
@@ -425,7 +411,6 @@ server <- function(input, output, session) {
          transformation2 = input$transformation2,
          ages2 = input$ageRange2,
          sexes2 = input$sex2,
-         align2 = input$align2,
          num_align2 = input$num_align2,
          exponentials2 = input$exponentials2,
          normalize2 = input$normalize2,
@@ -437,7 +422,6 @@ server <- function(input, output, session) {
          transformation1 = input$transformation1,
          ages1 = input$ageRange1,
          sexes1 = input$sex1,
-         align1 = input$align1,
          num_align1 = input$num_align1,
          exponentials1 = input$exponentials1,
          normalize1 = input$normalize1,
@@ -457,24 +441,6 @@ server <- function(input, output, session) {
   
   observe({
     input.settings <- inputData()
-    
-    if(input.settings$transformation1 == 'none' | !as.logical(input.settings$align1)) {
-      updateRadioButtons(session, "exponentials1",
-                         selected = list('No' = F))
-    }
-    
-    shinyjs::toggleState("exponentials1", 
-                         input.settings$transformation1 == 'log10' & 
-                           input.settings$align1 == 'TRUE')
-    
-    if(input.settings$transformation2 == 'none' | !as.logical(input.settings$align2)) {
-      updateRadioButtons(session, "exponentials2",
-                         selected = list('No' = F))
-    }
-    
-    shinyjs::toggleState("exponentials2", 
-                         input.settings$transformation2 == 'log10' & 
-                           input.settings$align2 == 'TRUE')
     
     if(!is.null(input.settings$ages3) &
        !is.null(input.settings$sexes3)) {
