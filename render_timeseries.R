@@ -77,9 +77,6 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                             rep('3 days', length(date_seq)),
                             rep('5 days', length(date_seq)),
                             rep('7 days', length(date_seq))))
-    
-    exp.df <- exp.df %>%
-      filter(y <= max(local.df[[s]]))
   }
   
   if(these.data$num_align > 0) {
@@ -91,11 +88,19 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     if(as.logical(these.data$exp)) {
       exp.df <- exp.df %>%
         mutate(date = date - min(date))
+      
+      exp.df <- exp.df %>%
+        filter(y <= max(local.df[[s]]))
     }
   } else {
     local.df <- local.df %>%
       filter(date >= (min(date) + these.data$pushtime[1] - 1),
              date < (min(date) + these.data$pushtime[2]))
+    
+    if(as.logical(these.data$exp)) {
+      exp.df <- exp.df %>%
+        filter(y <= max(local.df[[s]]))
+    }
   }
   
   # get only the local colors
