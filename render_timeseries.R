@@ -24,6 +24,9 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     mutate(!!s := round(rollmeanr(.data[[s]], as.numeric(these.data$smooth), fill = NA))) %>%
     ungroup()
   
+  # get only the requested set of data for local use
+  local.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
+  
   start_dates <- local.df %>%
     filter(date >= (min(date) + these.data$pushtime[1] - 1)) %>%
     group_by(county) %>%
@@ -88,9 +91,6 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
         mutate(date = date - min(date))
     }
   }
-  
-  # get only the requested set of data for local use
-  local.df <- local.df[local.df$sex %in% these.data$sexes & local.df$age_range %in% these.data$ages, ]
   
   # get only the local colors
   local.colors <- unlist(these.colors[unique(local.df$county)])
