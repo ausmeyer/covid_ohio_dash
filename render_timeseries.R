@@ -364,17 +364,12 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
   }
   
   if(as.logical(these.data$exp)) {
-    this.max.x.add <- 0
-    this.max.y.multi <- 1.0
-    this.size <- 6
-    this.increment <- 0.5
-    
-    if(plotly.settings) {
-      this.max.x.add <- as.numeric(max(exp.df$date) - min(exp.df$date)) * 0.05
-      this.max.y.multi <- 1.01
-      this.size <- 4
-      this.increment <- 0.25
-    }
+    label.df <- exp.df %>% 
+      group_by(ds) %>%
+      summarise(date = max(date),
+                y = max(y),
+                label = ds[1]) %>%
+      ungroup()
     
     p <- p + geom_line(data = exp.df,
                        aes(x = date,
@@ -383,43 +378,26 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                        color = 'gray50',
                        alpha = 0.8,
                        size = line.size * 0.9,
-                       linetype = "dashed") +
-      annotate("text",
-               x = max(exp.df$date[exp.df$ds == '2 days']) - this.max.x.add,
-               y = this.max.y.multi * max(exp.df$y[exp.df$ds == '2 days']),
-               label = "2 days",
-               size = this.size - this.increment * 1,
-               hjust = 1,
-               vjust = -0.25,
-               color = 'gray50',
-               alpha = 1) +
-      annotate("text",
-               x = max(exp.df$date[exp.df$ds == '3 days']) - this.max.x.add,
-               y = this.max.y.multi * max(exp.df$y[exp.df$ds == '3 days']),
-               label = "3 days",
-               size = this.size - this.increment * 2,
-               hjust = 1,
-               vjust = -0.25,
-               color = 'gray50',
-               alpha = 1) +
-      annotate("text",
-               x = max(exp.df$date[exp.df$ds == '5 days']) - this.max.x.add,
-               y = this.max.y.multi * max(exp.df$y[exp.df$ds == '5 days']),
-               label = "5 days",
-               size = this.size - this.increment * 3,
-               hjust = 1,
-               vjust = -0.25,
-               color = 'gray50',
-               alpha = 1) +
-      annotate("text",
-               x = max(exp.df$date[exp.df$ds == '7 days']) - this.max.x.add,
-               y = this.max.y.multi * max(exp.df$y[exp.df$ds == '7 days']),
-               label = "7 days",
-               size = this.size - this.increment * 4,
-               hjust = 1,
-               vjust = -0.25,
-               color = 'gray50',
-               alpha = 1)
+                       linetype = "dashed")
+    
+    if(plotly.settings) {
+      this.subtract <- (max(exp.df$date) - min(exp.df$date)) * 0.045
+      p <- p + geom_text(data = label.df,
+                         aes(x = date - this.subtract, 
+                             y = y, 
+                             label = label),
+                         size = 5,
+                         color = 'gray50')
+    }
+    else {
+      p <- p + geom_text_repel(data = label.df,
+                               aes(x = date, 
+                                   y = y, 
+                                   label = label),
+                               size = 6,
+                               hjust = 0,
+                               color = 'gray50')
+    }
   }
   
   if(length(highlights) > 0) {
