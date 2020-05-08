@@ -29,25 +29,41 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     filter(sex %in% these.data$sexes,
            age_range %in% these.data$ages)
   
+  s1.df <- local.df %>%
+    filter(date < (min(date) + these.data$pushtime[1]))
+  s2.df <- local.df %>%
+    filter(date >= (min(date) + these.data$pushtime[2] - 1))
+  
+  local.df <- local.df %>%
+    filter(date >= (min(date) + these.data$pushtime[1] - 1) &
+             date < (min(date) + these.data$pushtime[2]))
+  
   # find starting location for alignments or exponentials
   if(these.data$num_align > 0 | as.logical(these.data$exp)) {
-    start_dates <- local.df %>%
-      group_by(county) %>%
-      summarise(start_date = max(c(min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE),
-                                 min(date, na.rm = TRUE) + these.data$pushtime[1] - 1))) %>%
-      ungroup()
-    
     local.df.exp <- local.df %>%
       arrange(-desc(county)) %>%
       group_by(county) %>%
-      mutate(start = start_dates$start_date[start_dates$county == county[1]]) %>%
+      mutate(start = min(date[.data[[s]] >= as.numeric(these.data$num_align)], na.rm = TRUE)) %>%
       ungroup()
-
-    doubling.df <- local.df.exp %>%
-      filter(date >= start &
-               date < (min(date, na.rm = TRUE) + these.data$pushtime[2]) &
-               sex %in% these.data$sexes &
-               age_range %in% these.data$ages)
+    
+    if(as.logical(these.data$drop)) {
+      doubling.df <- local.df.exp %>%
+        filter(date >= start &
+                 sex %in% these.data$sexes &
+                 age_range %in% these.data$ages)
+    }
+    else if (these.data$num_align == 0) {
+      doubling.df <- local.df.exp %>%
+        filter(date >= start &
+                 date < (min(date, na.rm = TRUE) + these.data$pushtime[2]) &
+                 sex %in% these.data$sexes &
+                 age_range %in% these.data$ages)
+    } else {
+      doubling.df <- local.df.exp %>%
+        filter(date >= start &
+                 sex %in% these.data$sexes &
+                 age_range %in% these.data$ages)
+    }
     
     if(length(highlights) > 0)
       doubling.df <- doubling.df %>% filter(county %in% highlights)
@@ -69,47 +85,47 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     if(high == 0)
       high <- 1
     
-    start <- 10^mean(c(log10(low), log10(high)))
+    start <- 10 ^ mean(c(log10(low), log10(high)))
     
     date_seq <- 0:(max(doubling.df$date) - min(doubling.df$date))
+    
     ys <- lapply(c(2, 3, 5, 7), function(x) doubling_time(start, x, date_seq))
     
-    exp.df <- tibble(date = rep(min(doubling.df$date) + days(date_seq), 4),
+    if(!as.logical(these.data$drop) & these.data$num_align > 0) {
+      dates <- rep(date_seq + these.data$pushtime[1] - 1, 4)
+    } else {
+      dates <- rep(min(doubling.df$date) + days(date_seq), 4)
+    }
+    
+    exp.df <- tibble(date = dates,
                      y = unlist(ys),
                      ds = c(rep('2 days', length(date_seq)),
                             rep('3 days', length(date_seq)),
                             rep('5 days', length(date_seq)),
                             rep('7 days', length(date_seq))))
+    
+    # cap the exponential growth guides at the maximum for the current y-values
+    exp.df <- exp.df %>%
+      filter(y <= max(local.df[[s]]))
   }
   
   # align the data after above calculations
-  # cap the exponential growth guides at the maximum for the current y-values
-  if(these.data$num_align > 0) {
+  if(!as.logical(these.data$drop) & these.data$num_align > 0) {
+    local.df <- local.df.exp %>%
+      filter(date >= start) %>%
+      group_by(county) %>%
+      mutate(date = date - min(date) + these.data$pushtime[1] - 1) %>%
+      ungroup()
+  } else if (these.data$num_align > 0) {
     local.df <- local.df.exp %>%
       filter(date >= start) %>%
       group_by(county) %>%
       mutate(date = date - min(date)) %>%
       ungroup()
-    
     if(as.logical(these.data$exp)) {
-      exp.df <- exp.df %>%
-        mutate(date = date - min(date))
-      
-      exp.df <- exp.df %>%
-        filter(y <= max(local.df[[s]]))
-    }
-  } else {
-    spare.df <- local.df %>%
-      filter(date < (min(date) + these.data$pushtime[1]) |
-               date >= (min(date) + these.data$pushtime[2] - 1))
-    
-    local.df <- local.df %>%
-      filter(date >= (min(date) + these.data$pushtime[1] - 1) &
-               date < (min(date) + these.data$pushtime[2]))
-    
-    if(as.logical(these.data$exp)) {
-      exp.df <- exp.df %>%
-        filter(y <= max(local.df[[s]]))
+      exp.df <- exp.df  %>%
+        mutate(date = date - min(date)) %>%
+        ungroup()
     }
   }
   
@@ -156,11 +172,8 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     p <- p + theme(legend.position = 'none')
   
   # make spare data sets to gray out point not in select time frame
-  if(these.data$num_align == 0 & !as.logical(these.data$drop)){
-    s.1 <- spare.df %>% filter(date < (min(date) + these.data$pushtime[1]))
-    s.2 <- spare.df %>% filter(date >= (min(date) + these.data$pushtime[2] - 1))
-    
-    p <- p + geom_line(data = s.1,
+  if(!as.logical(these.data$drop) & these.data$num_align == 0){
+    p <- p + geom_line(data = s1.df,
                        aes(x = date,
                            y = .data[[s]],
                            group = interaction(county, age_range, sex)),
@@ -168,7 +181,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                        fill = "#DEDEDE",
                        size = line.size,
                        alpha = 0.4) +
-      geom_point(data = s.1 %>% filter(date < max(date)),
+      geom_point(data = s1.df %>% filter(date < max(date)),
                  aes(x = date,
                      y = .data[[s]],
                      group = interaction(county, age_range, sex)),
@@ -177,7 +190,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                  size = point.size,
                  alpha = 0.4)
     
-    p <- p + geom_line(data = s.2,
+    p <- p + geom_line(data = s2.df,
                        aes(x = date,
                            y = .data[[s]],
                            group = interaction(county, age_range, sex)),
@@ -185,7 +198,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                        fill = "#DEDEDE",
                        size = line.size,
                        alpha = 0.4) +
-      geom_point(data = s.2 %>% filter(date > min(date)),
+      geom_point(data = s2.df %>% filter(date > min(date)),
                  aes(x = date,
                      y = .data[[s]],
                      group = interaction(county, age_range, sex)),
@@ -357,7 +370,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     this.increment <- 0.5
     
     if(plotly.settings) {
-      this.max.x.add <- as.numeric(max(exp.df$date) - min(exp.df$date)) * 0.07
+      this.max.x.add <- as.numeric(max(exp.df$date) - min(exp.df$date)) * 0.05
       this.max.y.multi <- 1.01
       this.size <- 4
       this.increment <- 0.25
@@ -374,7 +387,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
       annotate("text",
                x = max(exp.df$date[exp.df$ds == '2 days']) - this.max.x.add,
                y = this.max.y.multi * max(exp.df$y[exp.df$ds == '2 days']),
-               label = "doubling in 2 days",
+               label = "2 days",
                size = this.size - this.increment * 1,
                hjust = 1,
                vjust = -0.25,
@@ -383,7 +396,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
       annotate("text",
                x = max(exp.df$date[exp.df$ds == '3 days']) - this.max.x.add,
                y = this.max.y.multi * max(exp.df$y[exp.df$ds == '3 days']),
-               label = "doubling in 3 days",
+               label = "3 days",
                size = this.size - this.increment * 2,
                hjust = 1,
                vjust = -0.25,
@@ -392,7 +405,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
       annotate("text",
                x = max(exp.df$date[exp.df$ds == '5 days']) - this.max.x.add,
                y = this.max.y.multi * max(exp.df$y[exp.df$ds == '5 days']),
-               label = "doubling in 5 days",
+               label = "5 days",
                size = this.size - this.increment * 3,
                hjust = 1,
                vjust = -0.25,
@@ -401,7 +414,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
       annotate("text",
                x = max(exp.df$date[exp.df$ds == '7 days']) - this.max.x.add,
                y = this.max.y.multi * max(exp.df$y[exp.df$ds == '7 days']),
-               label = "doubling in 7 days",
+               label = "7 days",
                size = this.size - this.increment * 4,
                hjust = 1,
                vjust = -0.25,

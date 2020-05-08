@@ -374,6 +374,7 @@ ui <- bootstrapPage(
                       tags$ul(
                         tags$li("Charts will build automatically 1.5 seconds after changing any parameter."),
                         tags$li("The yellow, red, and gray dashboard panels will show the aggregate number of cases, hospitalizations, and deaths of the included counties (even if they are not 'hightlighted') with selected ages/sexes/normalization on the current day."),
+                        tags$li("The dashboard panels will re-sum based on the select time option, but not the align on date option."),
                         tags$li("The Counties menu provides for selection of counties of interest."),
                         tags$li("The Highlights menu allows hightlighting particular counties on the time series plot on top of the selected counties."),
                         tags$li("The Data menu provides the values available from the Ohio Dept. of Health (ODH)."),
