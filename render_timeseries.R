@@ -157,7 +157,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
   if(these.data$transformation != 'none')
     p <- p + scale_y_continuous(trans = these.data$transformation)
   
-  p <- p + theme_minimal_hgrid(base.size, rel_small = 1) +
+  p <- p + theme_minimal(base.size) +
     theme(legend.position = "bottom",
           legend.justification = "right",
           legend.text = element_text(size = base.size),
