@@ -405,8 +405,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     if(plotly.settings) {
       p <- p + geom_text(data = label.df,
                          aes(x = date, 
-                             y = y, 
-                             nudge_y = this.nudge.y,
+                             y = y + this.nudge.y, 
                              label = ds),
                          size = 5,
                          color = 'gray50')
@@ -414,10 +413,9 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     else {
       p <- p + geom_text_repel(data = label.df,
                                aes(x = date, 
-                                   y = y, 
+                                   y = y + this.nudge.y, 
                                    label = label),
                                size = 6,
-                               nudge_y = this.nudge.y,
                                bg.color = "white",
                                bg.r = 0.1,
                                color = 'gray50')
