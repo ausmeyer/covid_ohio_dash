@@ -382,11 +382,12 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
   if(as.logical(these.data$exp)) {
     label.df <- exp.df %>% 
       group_by(ds) %>%
-      summarise(date = date[round(0.98 * length(date))],
-                y = y[round(0.98 * length(y))],
+      summarise(date = date[round(1 * length(date))],
+                y = y[round(1 * length(y))],
                 label = ds[1]) %>%
       ungroup()
     
+    this.nudge.y <- (max(local.df[[s]]) - min(local.df[[s]])) * 0.04
     p <- p + geom_line(data = exp.df,
                        aes(x = date,
                            y = y,
@@ -394,13 +395,18 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                        color = 'gray50',
                        alpha = 0.8,
                        size = line.size * 0.9,
-                       linetype = "dashed")
+                       linetype = "dashed") +
+      geom_point(data = label.df,
+                 aes(x = date,
+                     y = y),
+                 color = 'gray50',
+                 size = point.size * 0.75)
     
     if(plotly.settings) {
-      this.subtract <- (max(exp.df$date) - min(exp.df$date)) * 0.05
       p <- p + geom_text(data = label.df,
-                         aes(x = date - this.subtract, 
+                         aes(x = date, 
                              y = y, 
+                             nudge_y = this.nudge.y,
                              label = ds),
                          size = 5,
                          color = 'gray50')
@@ -411,7 +417,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                                    y = y, 
                                    label = label),
                                size = 6,
-                               hjust = 0,
+                               nudge_y = this.nudge.y,
                                bg.color = "white",
                                bg.r = 0.1,
                                color = 'gray50')
