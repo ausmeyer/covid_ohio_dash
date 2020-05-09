@@ -136,6 +136,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
   if(length(highlights) > 0) {
     sapply(names(local.colors), function(x) if(!(x %in% highlights)) {local.colors[x] <<- '#DEDEDE'})
   }
+  plottable.df <- local.df %>% filter(!(county %in% highlights))
   
   # define base sizes
   base.size <- 16
@@ -207,8 +208,6 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                  size = point.size,
                  alpha = 0.4)
   }
-  
-  plottable.df <- local.df %>% filter(!(county %in% highlights))
   
   if(s == 'caseCount')
     tooltip.label <- 'Daily Cases:'
@@ -366,8 +365,8 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
   if(as.logical(these.data$exp)) {
     label.df <- exp.df %>% 
       group_by(ds) %>%
-      summarise(date = max(date),
-                y = max(y),
+      summarise(date = date[round(0.98 * length(date))],
+                y = y[round(0.98 * length(y))],
                 label = ds[1]) %>%
       ungroup()
     
@@ -381,11 +380,11 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                        linetype = "dashed")
     
     if(plotly.settings) {
-      this.subtract <- (max(exp.df$date) - min(exp.df$date)) * 0.04
+      this.subtract <- (max(exp.df$date) - min(exp.df$date)) * 0.05
       p <- p + geom_text(data = label.df,
                          aes(x = date - this.subtract, 
                              y = y, 
-                             label = label),
+                             label = ds),
                          size = 5,
                          color = 'gray50')
     }
@@ -396,6 +395,8 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                                    label = label),
                                size = 6,
                                hjust = 0,
+                               bg.color = "white",
+                               bg.r = 0.1,
                                color = 'gray50')
     }
   }
