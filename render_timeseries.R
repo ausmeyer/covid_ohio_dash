@@ -88,7 +88,6 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     start <- 10 ^ mean(c(log10(low), log10(high)))
     
     date_seq <- 0:(max(doubling.df$date) - min(doubling.df$date))
-    
     ys <- lapply(c(2, 3, 5, 7), function(x) doubling_time(start, x, date_seq))
     
     if(!as.logical(these.data$drop) & these.data$num_align > 0) {
@@ -362,6 +361,24 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
       )
   }
   
+  if(length(highlights) > 0) {
+    highlights.df <- local.df[local.df$county %in% highlights, ]
+    p <- p + geom_line(data = highlights.df,
+                       aes(x = date,
+                           y = .data[[s]],
+                           color = county),
+                       size = line.size,
+                       alpha = 0.8) + 
+      geom_point(data = highlights.df,
+                 aes(x = date, 
+                     y = .data[[s]], 
+                     color = county,
+                     fill = county,
+                     text = tooltip.func(highlights.df)),
+                 size = point.size, 
+                 alpha = 0.6)
+  }
+  
   if(as.logical(these.data$exp)) {
     label.df <- exp.df %>% 
       group_by(ds) %>%
@@ -399,24 +416,6 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                                bg.r = 0.1,
                                color = 'gray50')
     }
-  }
-  
-  if(length(highlights) > 0) {
-    highlights.df <- local.df[local.df$county %in% highlights, ]
-    p <- p + geom_line(data = highlights.df,
-                       aes(x = date,
-                           y = .data[[s]],
-                           color = county),
-                       size = line.size,
-                       alpha = 0.8) + 
-      geom_point(data = highlights.df,
-                 aes(x = date, 
-                     y = .data[[s]], 
-                     color = county,
-                     fill = county,
-                     text = tooltip.func(highlights.df)),
-                 size = point.size, 
-                 alpha = 0.6)
   }
   
   if(these.data$num_align > 0) {
