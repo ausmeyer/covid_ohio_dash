@@ -381,7 +381,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                        linetype = "dashed")
     
     if(plotly.settings) {
-      this.subtract <- (max(exp.df$date) - min(exp.df$date)) * 0.045
+      this.subtract <- (max(exp.df$date) - min(exp.df$date)) * 0.04
       p <- p + geom_text(data = label.df,
                          aes(x = date - this.subtract, 
                              y = y, 
