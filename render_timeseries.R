@@ -387,7 +387,8 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
                 label = ds[1]) %>%
       ungroup()
     
-    this.nudge.y <- (max(local.df[[s]]) - min(local.df[[s]])) * 0.04
+    this.nudge.y <- (max(local.df[[s]]) - min(local.df[[s]])) * 0.03
+
     p <- p + geom_line(data = exp.df,
                        aes(x = date,
                            y = y,
@@ -413,12 +414,14 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
     else {
       p <- p + geom_text_repel(data = label.df,
                                aes(x = date, 
-                                   y = y + this.nudge.y, 
+                                   y = y, 
                                    label = label),
+                               nudge_y = this.nudge.y,
                                size = 6,
                                bg.color = "white",
                                bg.r = 0.1,
-                               color = 'gray50')
+                               color = 'gray50',
+                               segment.color = 'gray50')
     }
   }
   
