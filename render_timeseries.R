@@ -268,7 +268,7 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
       ) +
       guides(
         color = guide_legend(
-          nrow = ceiling(length(unique(local.df$county)) / 6),
+          nrow = ceiling(length(unique(local.df$county)) / 5),
           override.aes = list(
             linetype = c(rep(0, length(unique(local.df$county)))),
             shape = c(rep(21, length(unique(local.df$county))))
