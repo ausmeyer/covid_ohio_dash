@@ -387,6 +387,7 @@ ui <- bootstrapPage(
                         tags$li("The Guide option will overlay a doubling time guide; I strongly recommended using it only after aligning the data to facilitate interpretation."),
                         tags$li("For the Map, if 'Total' is included for ages or sex, the map will only use Total. If any other combination of ages or sexes is picked, it will sum the categories selected."),
                         tags$li("Due to lack of time series data, removing the prison population is only available on the map. Removing prisoners requires sex and age be set to 'Total' only."),
+                        tags$li("Keep in mind that when you remove the prison population, it just removes the number of prison cases (there is no timeseries available). As a result, if the sum over days is not set to all days, then it could distort the data."),
                         tags$li("At this time, only prisoner Total Cases and Total Deaths can be removed. Removing prisoners assumes the counts have been applied to the county where the prison is located."),
                         tags$li("The Data tab allows filtering the data used in this dashboard and downloading the filtered dataset. The data is originally from ODH, but includes calculated age, sex, and county totals as well as values normalized by population that is not included in the ODH data.")
                       ),
