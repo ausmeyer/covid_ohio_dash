@@ -4,7 +4,7 @@ library(tidyverse)
 
 load('population.rda')
 
-prison_df <- extract_tables('https://coronavirus.ohio.gov/static/DRCCOVID-19Information.pdf')
+prison_df <- extract_tables('https://coronavirus.ohio.gov/static/reports/DRCCOVID-19Information.pdf')
 
 #prison_colnames <- trimws(pmap(as_tibble(t(as.data.frame(prison_df[2])[1:11, ])), paste))
 prison_colnames <- c('institution', 'staff.positive', 'staff.deaths', 
