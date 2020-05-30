@@ -56,7 +56,7 @@ names(ohio.df) <- c('county', 'sex', 'age_range',
                     'onset_date', 'death_date', 'admission_date',
                     'caseCount', 'deathCount', 'hospitalizedCount')
 
-ohio.df <- ohio.df[!(ohio.df$county == 'Grand Total'), ]
+ohio.df <- ohio.df %>% filter(!(county %in% c('Grand Total', 'Out')))
 ohio.df$onset_date <- mdy(ohio.df$onset_date)
 
 ohio.df <- ohio.df %>% 
