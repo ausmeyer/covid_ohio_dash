@@ -83,7 +83,7 @@ prison_county <- list('AOCI' = 'Allen',
                       "WCI" = "Warren",
                       "Totals" = "Totals")
 
-prison_df <- bind_cols(prison_df, tibble(county = unlist(prison_county[prison_df$institution], use.names = F)))
+prison_df <- bind_cols(prison_df, tibble(county = unlist(prison_county[as.character(prison_df$institution)], use.names = F)))
 names(prison_df) <- make.names(names(prison_df))
 
 prison_summary <- prison_df %>% 
