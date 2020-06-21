@@ -70,10 +70,11 @@ ohio.df <- ohio.df %>%
 
 ohio.df <- calc.totals(ohio.df)
 
-normalized.df <- ohio.df[ohio.df$sex %in% unique(population$sex) & 
-                           ohio.df$age_range %in% unique(population$age_range), ]
+ohio.df <- ohio.df[ohio.df$sex %in% unique(population$sex) & 
+                     ohio.df$age_range %in% unique(population$age_range) &
+                     ohio.df$county %in% population$county, ]
 
-normalized.df <- normalized.df %>% 
+normalized.df <- ohio.df %>% 
   group_by(county, sex, age_range, date) %>%
   mutate(population = population$pop[population$sex == .data$sex & 
                                        population$age_range == .data$age_range & 
