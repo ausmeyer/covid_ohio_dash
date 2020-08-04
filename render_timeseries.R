@@ -9,11 +9,11 @@ renderTimeSeries <- function(these.data, these.colors, plotly.settings = F) {
   # pick local data to use from and normalization options
   if(as.logical(these.data$normalize)) {
     local.df <- normalized.df %>% filter(county %in% these.data$counties)
-    this.prison_summary <- normalized_prison_summary
+    #this.prison_summary <- normalized_prison_summary
   }
   else {
     local.df <- ohio.df %>% filter(county %in% these.data$counties)
-    this.prison_summary <- prison_summary
+    #this.prison_summary <- prison_summary
   }
   
   # smooth data if requested

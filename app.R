@@ -341,16 +341,16 @@ ui <- bootstrapPage(
                                                             choices = all.sexes,
                                                             selected = 'Total')
                                          )
-                                       ),
-                                       fluidRow(
-                                         column(12,
-                                                radioButtons("prisoners3", 
-                                                             h5("Remove Prisoners (Map only)"), 
-                                                             choices = list('Yes' = T, 'No' = F),
-                                                             selected = list('No' = F)
-                                                )
-                                         )
-                                       )
+                                       )#,
+                                       #fluidRow(
+                                      #   column(12,
+                                      #          radioButtons("prisoners3", 
+                                      #                       h5("Remove Prisoners (Map only)"), 
+                                      #                       choices = list('Yes' = T, 'No' = F),
+                                      #                       selected = list('No' = F)
+                                      #          )
+                                      #   )
+                                      #)
                                    )
                       ),
                       mainPanel(width = 9, girafeOutput("mapPlot") %>% withSpinner())
@@ -386,9 +386,8 @@ ui <- bootstrapPage(
                         tags$li("The Drop outside of Time Frame will drop the data outside of the selected time frame rather than graying it out."),
                         tags$li("The Guide option will overlay a doubling time guide; I strongly recommended using it only after aligning the data to facilitate interpretation."),
                         tags$li("For the Map, if 'Total' is included for ages or sex, the map will only use Total. If any other combination of ages or sexes is picked, it will sum the categories selected."),
-                        tags$li("Due to lack of time series data, removing the prison population is only available on the map. Removing prisoners requires sex and age be set to 'Total' only."),
-                        tags$li("Keep in mind that when you remove the prison population, it just removes the number of prison cases (there is no timeseries available). As a result, if the sum over days is not set to all days, then it could distort the data."),
-                        tags$li("At this time, only prisoner Total Cases and Total Deaths can be removed. Removing prisoners assumes the counts have been applied to the county where the prison is located."),
+                        tags$li("Due to inconsistencies in Ohio Department of Health data releases, removing the prison population is no longer available."),
+                        #tags$li("At this time, only prisoner Total Cases and Total Deaths can be removed. Removing prisoners assumes the counts have been applied to the county where the prison is located."),
                         tags$li("The Data tab allows filtering the data used in this dashboard and downloading the filtered dataset. The data is originally from ODH, but includes calculated age, sex, and county totals as well as values normalized by population that is not included in the ODH data.")
                       ),
                       
@@ -425,7 +424,7 @@ server <- function(input, output, session) {
          ages3 = input$ageRange3,
          sexes3 = input$sex3,
          normalize3 = input$normalize3,
-         prisoners3 = input$prisoners3,
+         #prisoners3 = input$prisoners3,
          map.smooth3 = input$smooth3,
          counties2 = input$countyChoice2,
          highlights2 = input$highlightSet2,
@@ -463,29 +462,29 @@ server <- function(input, output, session) {
     sapply(1:length(unique(ohio.df$county)), function(x) colors.list[unique(ohio.df$county)[x]] <<- new.cols[x])
   })})
   
-  observe({
-    input.settings <- inputData()
+  #observe({
+  #  input.settings <- inputData()
     
-    if(!is.null(input.settings$ages3) &
-       !is.null(input.settings$sexes3)) {
-      if((input.settings$ages3 != 'Total' | 
-          input.settings$sexes3 != 'Total') |
-         length(input.settings$ages3) > 1 | 
-         length(input.settings$sexes3) > 1) {
-        
-        updateRadioButtons(session, "prisoners3",
-                           selected = list('No' = F))
-      }
-    }
+    #if(!is.null(input.settings$ages3) &
+    #   !is.null(input.settings$sexes3)) {
+    #  if((input.settings$ages3 != 'Total' | 
+    #      input.settings$sexes3 != 'Total') |
+    #     length(input.settings$ages3) > 1 | 
+    #     length(input.settings$sexes3) > 1) {
+    #    
+    #    updateRadioButtons(session, "prisoners3",
+    #                       selected = list('No' = F))
+    #  }
+    #}
     
-    if(length(input.settings$ages3) <= 1 &
-       length(input.settings$sexes3) <= 1 &
-       'Total' %in% input.settings$ages3 & 
-       'Total' %in% input.settings$sexes3) {
-      shinyjs::enable('prisoners3') } else {
-        shinyjs::disable('prisoners3')
-      }
-  })
+    #if(length(input.settings$ages3) <= 1 &
+    #   length(input.settings$sexes3) <= 1 &
+    #   'Total' %in% input.settings$ages3 & 
+    #   'Total' %in% input.settings$sexes3) {
+    #  shinyjs::enable('prisoners3') } else {
+    #    shinyjs::disable('prisoners3')
+    #  }
+  #})
   
   observe({
     input.settings <- inputData()

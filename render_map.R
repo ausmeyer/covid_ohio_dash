@@ -6,11 +6,11 @@ renderMap <- function(these.data) {
   
   if(as.logical(these.data$normalize3)) {
     local.df <- normalized.df[normalized.df$sex %in% these.data$sexes3 & normalized.df$age_range %in% these.data$ages3, ]
-    this.prison_summary <- normalized_prison_summary
+    #this.prison_summary <- normalized_prison_summary
   }
   else {
     local.df <- ohio.df[ohio.df$sex %in% these.data$sexes3 & ohio.df$age_range %in% these.data$ages3, ]
-    this.prison_summary <- prison_summary
+    #this.prison_summary <- prison_summary
   }
   
   if('Total' %in% these.data$ages3)
@@ -27,14 +27,14 @@ renderMap <- function(these.data) {
               hospitalizedCount = sum(hospitalizedCount)) %>%
     ungroup()
   
-  if(as.logical(these.data$prisoners3)) {
-    tmp.df <- ohio.summary.df[na.omit(match(this.prison_summary$county, ohio.summary.df$county)), ]
-    tmp.df$caseCount <- tmp.df$caseCount - this.prison_summary$caseCount
-    tmp.df$deathCount <- tmp.df$deathCount - this.prison_summary$deathCount
-    
-    ohio.summary.df$caseCount[ohio.summary.df$county %in% tmp.df$county] <- tmp.df$caseCount
-    ohio.summary.df$deathCount[ohio.summary.df$county %in% tmp.df$county] <- tmp.df$deathCount
-  }
+  #if(as.logical(these.data$prisoners3)) {
+  #  tmp.df <- ohio.summary.df[na.omit(match(this.prison_summary$county, ohio.summary.df$county)), ]
+  #  tmp.df$caseCount <- tmp.df$caseCount - this.prison_summary$caseCount
+  #  tmp.df$deathCount <- tmp.df$deathCount - this.prison_summary$deathCount
+  #  
+  #  ohio.summary.df$caseCount[ohio.summary.df$county %in% tmp.df$county] <- tmp.df$caseCount
+  #  ohio.summary.df$deathCount[ohio.summary.df$county %in% tmp.df$county] <- tmp.df$deathCount
+  #}
   
   todays.ohio.df <- ohio.summary.df[match(as.character(ohio_sf$name), ohio.summary.df$county), ]
   ohio_sf <- bind_cols(ohio_sf, todays.ohio.df)

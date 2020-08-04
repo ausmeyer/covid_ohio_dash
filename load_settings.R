@@ -1,5 +1,5 @@
 suppressWarnings(load('data.rda'))
-suppressWarnings(load('prison.rda'))
+#suppressWarnings(load('prison.rda'))
 
 options(spinner.color="#6699cc")
 
