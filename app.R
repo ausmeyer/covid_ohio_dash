@@ -353,7 +353,7 @@ ui <- bootstrapPage(
                                       #)
                                    )
                       ),
-                      mainPanel(width = 9, girafeOutput("mapPlot") %>% withSpinner())
+                      mainPanel(width = 9, girafeOutput("mapPlot", height = '700px') %>% withSpinner())
              ),
              tabPanel("Data",
                       mainPanel(width = 12,
