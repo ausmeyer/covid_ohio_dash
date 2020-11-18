@@ -50,7 +50,7 @@ calc.totals <- function(this.df) {
 
 load('population.rda')
 
-ohio.df <- read_csv('https://coronavirus.ohio.gov/static/COVIDSummaryData.csv')
+ohio.df <- read_csv('https://coronavirus.ohio.gov/static/dashboards/COVIDSummaryData.csv')
 
 names(ohio.df) <- c('county', 'sex', 'age_range',
                     'onset_date', 'death_date', 'admission_date',
