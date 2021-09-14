@@ -50,22 +50,27 @@ calc.totals <- function(this.df) {
 
 load('population.rda')
 
-ohio.df <- read_csv('https://coronavirus.ohio.gov/static/dashboards/COVIDSummaryData.csv')
+ohio.df <- read_csv('https://coronavirus.ohio.gov/static/dashboards/COVIDDeathData_CountyOfResidence.csv')
 
 names(ohio.df) <- c('county', 'sex', 'age_range',
-                    'onset_date', 'death_date', 'admission_date',
-                    'caseCount', 'deathCount', 'hospitalizedCount')
+                    'onset_date', 'admission_date', 'death_date',
+                    'caseCount', 'hospitalizedCount', 'deathCount')
 
 ohio.df <- ohio.df %>% filter(!(county %in% c('Grand Total', 'Out')))
-ohio.df$onset_date <- mdy(ohio.df$onset_date)
+ohio.df$onset_date <- ymd(ohio.df$onset_date)
 
 ohio.df <- ohio.df %>% 
   group_by(county, sex, age_range) %>%
-  complete(onset_date = seq.Date(min(ohio.df$onset_date), max(ohio.df$onset_date), by = 'day')) %>%
+  complete(onset_date = seq.Date(min(ohio.df$onset_date[!is.na(ohio.df$onset_date)]), 
+                                 max(ohio.df$onset_date[!is.na(ohio.df$onset_date)]), 
+                                 by = 'day')) %>%
   ungroup() %>%
   select(-c(death_date, admission_date)) %>%
-  replace(is.na(.), 0) %>%
+  mutate(caseCount = replace(caseCount, is.na(caseCount), 0),
+         hospitalizedCount = replace(hospitalizedCount, is.na(hospitalizedCount), 0), 
+         deathCount = replace(deathCount, is.na(deathCount), 0)) %>%
   rename(date = onset_date) %>%
+  na.omit() %>%
   ungroup()
 
 ohio.df <- calc.totals(ohio.df)
